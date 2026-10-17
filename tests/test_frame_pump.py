@@ -75,3 +75,28 @@ def test_acquisition_errors_reach_viewer() -> None:
             next(iter(pump))
     finally:
         pump.close()
+
+
+def test_capture_timestamp_follows_newest_complete_frame(monkeypatch: pytest.MonkeyPatch) -> None:
+    """
+    Retain the acquisition timestamp with the latest frame rather than its consumption time.
+    """
+    completed = threading.Event()
+    stamps = iter((10.0, 20.0))
+    monkeypatch.setattr("based_thermals.frame_pump.monotonic", lambda: next(stamps))
+
+    def frames() -> Iterator[bytes]:
+        """
+        Finish two captures before the desktop consumes either one.
+        """
+        yield b"older"
+        yield b"newer"
+        completed.set()
+
+    pump = CameraFramePump(camera(frames))
+    try:
+        assert completed.wait(2)
+        assert list(pump) == [b"newer"]
+        assert pump.captured_at == 20.0
+    finally:
+        pump.close()

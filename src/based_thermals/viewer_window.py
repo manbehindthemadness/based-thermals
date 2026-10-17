@@ -6,12 +6,13 @@ from __future__ import annotations
 
 import math
 import mmap
+from collections import deque
 from collections.abc import Callable
-from time import perf_counter
+from time import monotonic, perf_counter
 
 from PySide6.QtCore import QEvent, Qt, QTimer
 from PySide6.QtGui import QCloseEvent, QImage, QKeyEvent, QResizeEvent
-from PySide6.QtWidgets import QMainWindow
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QMainWindow, QWidget
 
 from . import APP_NAME
 from .capture_window import run_window
@@ -35,6 +36,15 @@ def validated_draw_time(value: object) -> float | None:
     return duration if math.isfinite(duration) and duration >= 0 else None
 
 
+def averaged_timing(samples: deque[float | None], value: float | None) -> float | None:
+    """
+    Average available timings in the displayed-frame window, preserving unavailable values.
+    """
+    samples.append(value)
+    available = [sample for sample in samples if sample is not None]
+    return sum(available) / len(available) if value is not None else None
+
+
 class ViewerWindow(QMainWindow):
     """
     Own window geometry, fullscreen and input; acquisition stays in the parent.
@@ -53,6 +63,11 @@ class ViewerWindow(QMainWindow):
         self._frame_draw_ms: float | None = None
         self._frame_copy_ms = 0.0
         self._viewport_draw_ms: float | None = None
+        self._captured_at: float | None = None
+        self._capture_to_paint_ms: float | None = None
+        self._frame_paint_pending = False
+        self._draw_samples: deque[float | None] = deque(maxlen=10)
+        self._total_samples: deque[float | None] = deque(maxlen=10)
         self._status_text = "Waiting for camera…"
         self.canvas = ImageCanvas(send, self._viewport_painted)
         self.setCentralWidget(self.canvas)
@@ -68,27 +83,57 @@ class ViewerWindow(QMainWindow):
         self.setWindowTitle(APP_NAME)
         self.resize(1024, 800)
         self.statusBar().setToolTip(
-            "Time preparing and painting the viewport; excludes camera waits, saving and input."
+            "10-frame average of viewport preparation and painting; "
+            "excludes camera waits, saving and input."
         )
+        counters = QWidget()
+        counter_layout = QHBoxLayout(counters)
+        counter_layout.setContentsMargins(0, 0, 0, 0)
+        counter_layout.setSpacing(16)
+        self.status_text = QLabel()
+        self.draw_counter = QLabel("-- ms")
+        self.draw_counter.setToolTip(self.statusBar().toolTip())
+        self.draw_counter.setFixedWidth(self.draw_counter.fontMetrics().horizontalAdvance("99999.9 ms"))
+        self.draw_counter.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self.total_counter = QLabel("Total: -- ms")
+        self.total_counter.setToolTip(
+            "10-frame average from complete camera frame receipt to completed Qt painting, "
+            "including processing and queues; "
+            "excludes sensor exposure and physical display refresh."
+        )
+        for label in (self.status_text, self.draw_counter, self.total_counter):
+            counter_layout.addWidget(label)
+        self.statusBar().addWidget(counters)
         self._update_status()
 
     def _viewport_painted(self, elapsed_ms: float) -> None:
         """
-        Combine matched frame preparation/copy and completed Qt paint durations.
+        Average drawing cost and source-frame latency once per displayed frame.
         """
-        self._viewport_draw_ms = (
-            self._frame_draw_ms + self._frame_copy_ms + elapsed_ms
-            if self._frame_draw_ms is not None
-            else None
-        )
+        if self._frame_paint_pending:
+            draw_ms = (
+                self._frame_draw_ms + self._frame_copy_ms + elapsed_ms
+                if self._frame_draw_ms is not None else None
+            )
+            self._viewport_draw_ms = averaged_timing(self._draw_samples, draw_ms)
+            now = monotonic()
+            total_ms = (
+                (now - self._captured_at) * 1000
+                if self._captured_at is not None and self._captured_at <= now else None
+            )
+            self._capture_to_paint_ms = averaged_timing(self._total_samples, total_ms)
+            self._frame_paint_pending = False
         self._update_status()
 
     def _update_status(self) -> None:
         """
-        Keep the current status visible alongside the most recent viewport draw time.
+        Keep status visible beside the draw and total counters with fixed spacing.
         """
         draw = f"{self._viewport_draw_ms:.1f}" if self._viewport_draw_ms is not None else "--"
-        self.statusBar().showMessage(f"{self._status_text} | {draw} ms")
+        total = f"{self._capture_to_paint_ms:.1f}" if self._capture_to_paint_ms is not None else "--"
+        self.status_text.setText(self._status_text)
+        self.draw_counter.setText(f"{draw} ms")
+        self.total_counter.setText(f"Total: {total} ms")
 
     def _command(self, message: dict) -> None:
         """
@@ -134,6 +179,8 @@ class ViewerWindow(QMainWindow):
             pixels, width, height, width * 3, QImage.Format.Format_BGR888
         ).copy()
         self._frame_draw_ms = validated_draw_time(frame.get("viewport_draw_ms"))
+        self._captured_at = validated_draw_time(frame.get("captured_at"))
+        self._frame_paint_pending = True
         self._frame_copy_ms = (perf_counter() - started) * 1000 + (
             validated_draw_time(frame.get("viewport_copy_ms")) or 0.0
         )

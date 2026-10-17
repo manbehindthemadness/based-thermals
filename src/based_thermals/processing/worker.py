@@ -47,9 +47,10 @@ class PipelineWorker:
         scale: Any,
         rotation: Any,
         camera_palette: Any,
+        captured_at: float | None = None,
     ) -> None:
         """
-        Submit.
+        Queue the newest source frame with its host capture timestamp and processing settings.
         """
         with self.condition:
             self.pending = (
@@ -60,6 +61,7 @@ class PipelineWorker:
                 scale,
                 rotation,
                 camera_palette,
+                captured_at,
             )
             self.condition.notify()
 
@@ -131,7 +133,9 @@ class PipelineWorker:
                 if self.closed:
                     self.processor.close()
                     return
-                frame, averaged, document, revision, scale, rotation, palette = self.pending
+                (
+                    frame, averaged, document, revision, scale, rotation, palette, captured_at,
+                ) = self.pending
                 self.pending = None
                 make_preview = self.preview_enabled and (
                     perf_counter() - self.last_preview_at >= 0.5
@@ -165,6 +169,7 @@ class PipelineWorker:
                     "uses_visible": source_required(document, "visible"),
                     "timestamp": frame.timestamp,
                 } if isinstance(frame, CameraFrame) else {})
+                self.result_metadata["captured_at"] = captured_at
                 if previews is not None and self.preview_enabled:
                     self.preview_result = revision, previews
                     self.preview_errors = self.processor.last_preview_errors.copy()

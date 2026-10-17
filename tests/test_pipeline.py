@@ -345,6 +345,9 @@ def test_migration_retains_analyze_settings_and_old_mirror_geometry() -> None:
 
 
 def test_worker_overwrites_pending_frames_and_rejects_stale_results() -> None:
+    """
+    Drop superseded sources while keeping completed pixels and capture timing paired.
+    """
     worker = PipelineWorker()
     started, release = Event(), Event()
     calls = []
@@ -360,11 +363,11 @@ def test_worker_overwrites_pending_frames_and_rejects_stale_results() -> None:
 
     worker.processor.process = slow
     try:
-        worker.submit(b"first", None, default_pipeline(), 1, 1, 0, 1)
+        worker.submit(b"first", None, default_pipeline(), 1, 1, 0, 1, captured_at=10.0)
         assert started.wait(1)
         before = monotonic()
-        worker.submit(b"discard", None, default_pipeline(), 2, 1, 0, 1)
-        worker.submit(b"newest", None, default_pipeline(), 3, 1, 0, 1)
+        worker.submit(b"discard", None, default_pipeline(), 2, 1, 0, 1, captured_at=20.0)
+        worker.submit(b"newest", None, default_pipeline(), 3, 1, 0, 1, captured_at=30.0)
         assert monotonic() - before < 0.1
         assert worker.latest(3) is None
         release.set()
@@ -374,6 +377,9 @@ def test_worker_overwrites_pending_frames_and_rejects_stale_results() -> None:
         assert worker.latest(3) is not None
         assert calls == [b"first", b"newest"]
         assert worker.latest(1) is None
+        result, metadata = worker.latest_with_metadata(3)
+        assert result is worker.latest(3)
+        assert metadata["captured_at"] == 30.0
     finally:
         release.set()
         worker.close()

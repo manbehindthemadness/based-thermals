@@ -48,6 +48,7 @@ class PresentationController(SessionState):
                 self.persist_settings()
         self.fresh_frame = self.frame is not None
         if self.fresh_frame:
+            self.frame_captured_at = getattr(self.frame_pump, "captured_at", None)
             self.last_frame = self.frame
             self.last_frame_at = self.api.time.monotonic()
         elif self.last_frame is None:
@@ -108,6 +109,10 @@ class PresentationController(SessionState):
             self.frame, update_measurements=self.fresh_frame, image_processing=False
         )
         image_frame = self.renderer.current_frame
+        self.display_captured_at = (
+            self.frame_captured_at
+            if self.rendered.measurements_valid or not self.camera_profile.radiometry else None
+        )
         if image_frame is not None:
             palette = self.renderer.hardware_settings.get("palette", {}).get("value", 1)
             self.pipeline_worker.submit(
@@ -118,6 +123,7 @@ class PresentationController(SessionState):
                 self.renderer.scale,
                 self.renderer.rotation,
                 palette,
+                captured_at=self.display_captured_at,
             )
         processed = self.pipeline_worker.latest(self.pipeline_revision)
         result_metadata = {}
@@ -132,6 +138,7 @@ class PresentationController(SessionState):
                 self.api.LOG.warning("Image pipeline failed: %s", self.pipeline_error)
                 self.notify(f"Image pipeline: {self.pipeline_error}")
             if image is not None:
+                self.display_captured_at = result_metadata.get("captured_at")
                 mapping_valid = self.rendered.measurement_mapping_valid
                 if result_metadata.get("uses_visible"):
                     timestamp = cast(float, result_metadata.get("timestamp"))

@@ -82,6 +82,7 @@ class ViewerPanel(CapturePanel):
                 "width": frame.shape[1],
                 "height": frame.shape[0],
                 "viewport_draw_ms": state.get("viewport_draw_ms"),
+                "captured_at": state.get("captured_at"),
                 "viewport_copy_ms": (perf_counter() - copy_started) * 1000,
             }
         # Never replace an unsent frame descriptor with a state-only update.

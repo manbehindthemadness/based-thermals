@@ -125,6 +125,13 @@ The number beside the status is elapsed viewport draw time in milliseconds:
 image preparation, measurement overlays, graph composition, frame copying and Qt
 painting. Camera waits, file saving, input handling, asynchronous processing and
 OS display latency are excluded; `-- ms` means no completed frame is available yet.
+The **Total** counter, spaced to its right, measures complete camera-frame receipt
+through the resulting image's first completed Qt paint, including asynchronous
+processing, queues and frame copies. It follows the displayed image's source frame.
+Sensor exposure, device buffering before receipt and physical monitor refresh are
+outside this measurement; unavailable capture timing displays `-- ms`.
+Both counters show a rolling average over the last 10 displayed frames, using the
+available frames during startup. Repainting an existing image adds no samples.
 
 ## Browser viewer
 

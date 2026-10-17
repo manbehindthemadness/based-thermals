@@ -55,6 +55,8 @@ class SessionState:
     frame: bytes | CameraFrame | None = None
     frame_pump: api_types.CameraFramePump | None = None
     fresh_frame: bool = False
+    frame_captured_at: float | None = None
+    display_captured_at: float | None = None
     graph_image: np.ndarray = field(init=False)
     graph_interval: float = 0.0
     graph_interval_editor: api_types.GraphIntervalEditor = field(init=False)

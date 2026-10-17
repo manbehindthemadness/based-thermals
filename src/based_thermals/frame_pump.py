@@ -5,6 +5,7 @@ from __future__ import annotations
 import threading
 from collections import deque
 from collections.abc import Callable, Iterator
+from time import monotonic
 from typing import Any, cast
 
 from .camera_backends import CameraFrame, CameraProfile
@@ -21,6 +22,7 @@ class CameraFramePump:
         self._frames = deque(maxlen=1)
         self._finished = False
         self._error = None
+        self.captured_at: float | None = None
         self._stop = threading.Event()
         self._thread = threading.Thread(target=self._run, name="camera-acquisition", daemon=True)
         self._thread.start()
@@ -31,6 +33,7 @@ class CameraFramePump:
         """
         try:
             for frame in self._camera.frames():
+                captured_at = monotonic()
                 profile = getattr(self._camera, "profile", None)
                 if (isinstance(profile, CameraProfile) and profile.id != "duo"
                         and (not isinstance(frame, CameraFrame) or frame.profile != profile)):
@@ -38,7 +41,7 @@ class CameraFramePump:
                 if self._stop.is_set():
                     break
                 with self._condition:
-                    self._frames.append(frame)
+                    self._frames.append((frame, captured_at))
                     self._condition.notify()
         except Exception as exc:  # noqa: BLE001 - forward thread failures to the viewer
             if not self._stop.is_set():
@@ -51,12 +54,14 @@ class CameraFramePump:
     def __iter__(self) -> Iterator[bytes | CameraFrame | None]:
         """
         Yield the latest frame or a heartbeat while waiting for acquisition.
+
+        The captured_at property identifies the yielded frame's host receipt time.
         """
         while True:
             with self._condition:
                 self._condition.wait_for(lambda: self._frames or self._finished, timeout=0.05)
                 if self._frames:
-                    frame = self._frames.popleft()
+                    frame, self.captured_at = self._frames.popleft()
                 elif self._finished:
                     if self._error is not None:
                         raise CameraError(

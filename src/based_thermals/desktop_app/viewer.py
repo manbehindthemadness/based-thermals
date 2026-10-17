@@ -52,6 +52,7 @@ class ViewerController(SessionState):
             ),
             "status": self.status,
             "viewport_draw_ms": self.viewport_draw_ms,
+            "captured_at": self.display_captured_at,
         }
 
     def poll_viewer_commands(self: DesktopSession) -> bool:
