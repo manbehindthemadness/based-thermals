@@ -1,3 +1,4 @@
+from pathlib import Path
 from unittest.mock import Mock
 
 import cv2
@@ -83,6 +84,30 @@ def test_rotation_keeps_output_size_and_image_aspect_ratio(writer, tmp_path):
     assert np.all(result[:, 14:50] == 200)
     assert np.all(result[:, 50:] == 0)
     recorder.stop()
+
+
+@pytest.mark.parametrize(
+    "source_shape,bounds",
+    [((17, 64, 3), (0, 15, 64, 32)), ((64, 63, 3), (8, 0, 55, 48))],
+)
+def test_recording_centers_odd_padding(
+    writer: Mock, tmp_path: Path, source_shape: tuple[int, int, int],
+    bounds: tuple[int, int, int, int],
+) -> None:
+    """
+    Preserve aspect ratio and give the extra odd border pixel to the bottom or right.
+    """
+    recorder = VideoRecorder()
+    recorder.start(tmp_path / "padded.mp4", (48, 64, 3), "video", now=0)
+    image = np.full(source_shape, (30, 100, 200), dtype=np.uint8)
+    try:
+        recorder.write(image, now=0)
+        expected = np.zeros((48, 64, 3), np.uint8)
+        x0, y0, x1, y1 = bounds
+        expected[y0:y1, x0:x1] = (30, 100, 200)
+        np.testing.assert_array_equal(writer.frames[-1], expected)
+    finally:
+        recorder.stop()
 
 
 def test_encoder_open_failure_releases_writer_and_keeps_capture_idle(writer, tmp_path):

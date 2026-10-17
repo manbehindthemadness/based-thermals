@@ -76,7 +76,9 @@ class VideoRecorder:
         self._last_frame = None
 
     def _fit_frame(self, image: np.ndarray) -> np.ndarray:
-        """Keep the file's dimensions fixed when the viewer is rotated."""
+        """
+        Keep the file's dimensions fixed with centered black borders after rotation.
+        """
         width, height = self._size
         if image.shape[:2] == (height, width):
             return image
@@ -84,9 +86,12 @@ class VideoRecorder:
         resized_width = max(1, round(image.shape[1] * ratio))
         resized_height = max(1, round(image.shape[0] * ratio))
         resized = cv2.resize(image, (resized_width, resized_height), interpolation=cv2.INTER_AREA)
-        frame = np.zeros((height, width, 3), dtype=np.uint8)
-        x, y = (width - resized_width) // 2, (height - resized_height) // 2
-        frame[y : y + resized_height, x : x + resized_width] = resized
+        horizontal_padding, vertical_padding = width - resized_width, height - resized_height
+        left, top = horizontal_padding // 2, vertical_padding // 2
+        frame = cv2.copyMakeBorder(
+            resized, top, vertical_padding - top, left, horizontal_padding - left,
+            cv2.BORDER_CONSTANT, value=(0, 0, 0),
+        )
         return frame
 
     def write(self, image: np.ndarray, *, now: float | None = None) -> int:
