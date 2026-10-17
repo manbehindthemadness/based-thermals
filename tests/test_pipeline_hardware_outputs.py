@@ -49,6 +49,7 @@ messages = []
 window = ViewWindow(messages.append)
 window.show()
 editor = window.pipeline_editor
+editor.stack_titles["hardware"].setChecked(True)
 editor.create_new_pipeline()
 listing = editor.stacks["hardware"]
 footer = listing.output_footer
@@ -98,6 +99,7 @@ dual = {"camera_profile": {"id": "virtual-dual", "preview": True,
                            "radiometry": True, "visible": True}}
 sent = len(messages)
 editor.update_state(dual, False)
+editor.stack_titles["visible_hardware"].setChecked(True)
 app.processEvents()
 optical = editor.stacks["visible_hardware"]
 assert optical.isVisible() and optical.output_footer.isVisible()

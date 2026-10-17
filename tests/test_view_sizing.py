@@ -46,6 +46,7 @@ if saved_width == 1200:
     assert window.width() == 1200
 window.environment_button.click()
 window.calibrations_button.click()
+window.pipeline_editor.stack_titles["hardware"].click()
 check_width()
 assert scroll.verticalScrollBar().maximum() > 0
 editor = window.pipeline_editor

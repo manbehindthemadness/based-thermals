@@ -21,7 +21,6 @@ from PySide6.QtWidgets import (
     QListWidgetItem,
     QMessageBox,
     QPushButton,
-    QTabBar,
     QVBoxLayout,
     QWidget,
 )
@@ -42,10 +41,11 @@ from .compute import configure_backend_row, state_backend, update_compute_device
 from .custom import CustomControls
 from .dual import desired_camera_hardware as desired_hardware
 from .hardware import HardwareControlFields
+from .hardware_section import HardwareSection
 from .presets import pipeline_content, rename_current_preset
 from .selection import PresetSelection
 from .state import update_editor_state
-from .tabs import PipelineTabs
+from .tabs import PipelineTabBar, PipelineTabs
 from .transfer.actions import export_pipelines, import_pipelines
 from .widgets import PipelinePreview, StackList
 
@@ -63,6 +63,7 @@ class PipelineEditor(PipelineTabs, QWidget):
         self.document = default_pipeline()
         self.accepted_document = deepcopy(self.document)
         self.tab = "A"
+        self.software_expanded = True
         self.edit_serial = 0
         self.hardware_state = {}
         self.last_desired = desired_hardware(self.document)
@@ -91,13 +92,14 @@ class PipelineEditor(PipelineTabs, QWidget):
         self.stacks = {}
         self.stack_titles = {}
         for stack, title in (
-            ("hardware", "Thermal camera hardware · order organizes controls"),
+            ("hardware", "Thermal camera hardware"),
             ("visible_hardware", "Visible-light hardware · experimental; physical hardware untested"),
             ("software", "Software processing · runs from top to bottom"),
         ):
             if stack == "software":
-                self.tab_bar = QTabBar()
+                self.tab_bar = PipelineTabBar()
                 self.tab_bar.currentChanged.connect(self.select_tab)
+                self.tab_bar.toggle_requested.connect(self.toggle_software_section)
                 tab_controls = QHBoxLayout()
                 tab_controls.addWidget(self.tab_bar, 1)
                 self.add_tab_button = QPushButton("+")
@@ -113,15 +115,16 @@ class PipelineEditor(PipelineTabs, QWidget):
                 self.tab_status = QLabel()
                 self.tab_status.setWordWrap(True)
                 layout.addWidget(self.tab_status)
-            heading = QLabel(title)
+            listing = StackList(self, stack)
+            heading = (
+                QLabel(title) if stack == "software" else HardwareSection(
+                    title, listing, f"camera/{stack}_expanded", available=stack != "visible_hardware",
+                )
+            )
             self.stack_titles[stack] = heading
             layout.addWidget(heading)
-            listing = StackList(self, stack)
             self.stacks[stack] = listing
             layout.addWidget(listing)
-            if stack == "visible_hardware":
-                heading.hide()
-                listing.hide()
         buttons = QHBoxLayout()
         self.import_button = QPushButton("Import pipelines")
         self.export_button = QPushButton("Export pipelines")
@@ -512,9 +515,9 @@ class PipelineEditor(PipelineTabs, QWidget):
         listing.fit_contents()
         self.publish()
 
-    def rebuild(self) -> None:
+    def rebuild(self, *, software_only: bool = False) -> None:
         """
-        Rebuild.
+        Rebuild nodes, retaining camera widgets when only the selected software tab changes.
         """
         for identity, thumbnail in self.preview_widgets.items():
             if not thumbnail.image.isNull():
@@ -537,12 +540,18 @@ class PipelineEditor(PipelineTabs, QWidget):
         }
         self.rebuilding = True
         self.sync_tabs()
-        self.widgets = {}
+        self.widgets = {
+            identity: widgets for identity, widgets in self.widgets.items()
+            if software_only and widgets[0] != "software"
+        }
         self.custom_widgets = {}
-        self.hardware_widgets = {}
+        if not software_only:
+            self.hardware_widgets = {}
         self.preview_widgets = {}
         self.preview_timing_widgets = {}
         for stack, listing in self.stacks.items():
+            if software_only and stack != "software":
+                continue
             listing.clear()
             for item in self.nodes(stack):
                 entry = QListWidgetItem(listing)
@@ -716,6 +725,7 @@ class PipelineEditor(PipelineTabs, QWidget):
             listing.fit_contents()
         self.update_tab_status()
         self.update_titles()
+        self.set_software_expanded(self.software_expanded)
         self.rebuilding = False
 
     def update_titles(self) -> None:

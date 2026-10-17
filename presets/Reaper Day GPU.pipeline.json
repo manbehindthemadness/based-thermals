@@ -50,6 +50,33 @@
       },
       "bypass": false,
       "expanded": false
+    },
+    {
+      "id": "301b2ada1b814baf9fd47eb658e26e34",
+      "type": "brightness",
+      "params": {
+        "value": 50.0
+      },
+      "bypass": false,
+      "expanded": false
+    },
+    {
+      "id": "40c530c7c63640659489eda4db951239",
+      "type": "contrast",
+      "params": {
+        "value": 50.0
+      },
+      "bypass": false,
+      "expanded": false
+    },
+    {
+      "id": "402d8a770a094a4b88bfa199c2e5c115",
+      "type": "gamma",
+      "params": {
+        "value": 50
+      },
+      "bypass": false,
+      "expanded": false
     }
   ],
   "software": [

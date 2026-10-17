@@ -32,6 +32,51 @@
       },
       "bypass": false,
       "expanded": false
+    },
+    {
+      "id": "6bf0873cd2b9446d80448ccfa74498b5",
+      "type": "boost",
+      "params": {
+        "value": 1
+      },
+      "bypass": false,
+      "expanded": false
+    },
+    {
+      "id": "65910430f5fd4b9a8fba8efa30be9e28",
+      "type": "camera_colors",
+      "params": {
+        "palette": 1
+      },
+      "bypass": false,
+      "expanded": false
+    },
+    {
+      "id": "35135e8c406a4ad79994bc4138a8e85b",
+      "type": "brightness",
+      "params": {
+        "value": 50.0
+      },
+      "bypass": false,
+      "expanded": false
+    },
+    {
+      "id": "6f36dd2178094b84afb727d948f72821",
+      "type": "contrast",
+      "params": {
+        "value": 50.0
+      },
+      "bypass": false,
+      "expanded": false
+    },
+    {
+      "id": "eee7b2c52386437b8f52a274d2ee98b3",
+      "type": "gamma",
+      "params": {
+        "value": 50
+      },
+      "bypass": false,
+      "expanded": false
     }
   ],
   "software": [

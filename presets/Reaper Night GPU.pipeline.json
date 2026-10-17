@@ -41,6 +41,42 @@
       },
       "bypass": false,
       "expanded": false
+    },
+    {
+      "id": "d193c1bf4bad45c0b6042baadc30206d",
+      "type": "brightness",
+      "params": {
+        "value": 50.0
+      },
+      "bypass": false,
+      "expanded": false
+    },
+    {
+      "id": "041760dbe77046a8af3bbb14ef96322b",
+      "type": "camera_colors",
+      "params": {
+        "palette": 1
+      },
+      "bypass": false,
+      "expanded": false
+    },
+    {
+      "id": "f2c2f73a3d2848f2815f7e0876140a91",
+      "type": "contrast",
+      "params": {
+        "value": 50.0
+      },
+      "bypass": false,
+      "expanded": false
+    },
+    {
+      "id": "8ddddabd8dcd44a4b0aed94e69811d05",
+      "type": "gamma",
+      "params": {
+        "value": 50
+      },
+      "bypass": false,
+      "expanded": false
     }
   ],
   "software": [

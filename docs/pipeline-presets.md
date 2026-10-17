@@ -6,6 +6,17 @@
 
 Dragging a node shows a placement bar at valid drop positions in each pipeline
 stack. Source and Output remain fixed, and locked stacks cannot be reordered.
+The thermal-camera hardware section expands and collapses like Environment. It
+starts collapsed and remembers your choice across reopenings, independently of presets
+and individual node expansion. Visible-light hardware has its own disclosure when
+the camera supports it, with a separate remembered choice. Collapsing either section
+leaves the other section unchanged; all hardware settings remain applied.
+
+Click the active software tab to collapse its processing section. Clicking another
+tab switches to it normally; when collapsed, clicking any tab expands the section
+and selects that tab. The tab row stays visible. Space or Enter on the focused tab
+also toggles the section, and arrow keys switch tabs normally. Collapsing leaves
+processing and individual node expansion unchanged.
 
 The dropdown displays the loaded preset name and keeps it selected while you
 edit. **Update pipeline** re-saves that preset, including pending input edits.
@@ -36,13 +47,19 @@ the latest valid sensor frame, independently of temporal measurement averaging.
 Temperature readouts, spots and graphs retain their averaged measurement plane;
 calibration/invalid frames still hold the last valid image and readings.
 
+The eight bundled presets were refreshed from the saved app collection on
+2026-10-17. Each includes its saved camera controls, including explicit brightness,
+contrast and gamma at 50. Bundled nodes open collapsed; the matching standalone
+exports retain their saved expansion state.
+
 **Yautja** preserves the black-hot preview, thermal-detail branch B, raw contrast
 mask in C and camera-palette overlay in D, with single-pass Apple Core ML ACNet
 and the saved hardware detail/noise configuration.
 
 **Yautja GPU** bundles the current saved black-hot composition, camera-palette
 overlay, contrast mask and tuned Laplacian/antialiasing/sharpening thermal branch,
-with native-input Real-ESRGAN 4× using Apple Core ML `ALL` devices.
+with native-input Real-ESRGAN 4× using Apple Core ML `ALL` devices and camera
+detail amount 50.
 
 **Reaper Night GPU** and **Reaper Day GPU** bundle the saved masked raw-thermal
 blends, gamma/contrast settings, sharpening and FFDNet denoising with Apple
@@ -51,9 +68,9 @@ interpolation node. Day retains its black-hot thermal
 branch, inverted mix mask and camera palette setting.
 
 **Detail Enhanced CPU Upscale** bundles the saved Plasma preview with a Scharr
-thermal-edge branch, masked subtraction, CLAHE, sharpening, antialiasing and
-single-pass CPU ACNet enhancement. Standalone exports of all eight bundled
-presets are checked into `presets/`.
+thermal-edge branch, masked subtraction, sharpening, antialiasing and
+single-pass CPU ACNet enhancement with denoise level 3. Standalone exports of all
+eight bundled presets are checked into `presets/`.
 
 **Redneck Combat** is also bundled in the dropdown, preserving the original
 Inferno preview with its Laplacian/contour thermal branch and masked blend.

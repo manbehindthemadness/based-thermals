@@ -6,7 +6,7 @@
       "type": "detail",
       "params": {
         "enabled": true,
-        "amount": 0,
+        "amount": 50.0,
         "fixed": false
       },
       "bypass": false,
@@ -29,6 +29,51 @@
       "type": "preset",
       "params": {
         "value": "balanced"
+      },
+      "bypass": false,
+      "expanded": false
+    },
+    {
+      "id": "5bd8d108cc0648f5acc4e29cbfef1caf",
+      "type": "boost",
+      "params": {
+        "value": 1
+      },
+      "bypass": false,
+      "expanded": false
+    },
+    {
+      "id": "fd58233ba00e4df09e4aa051524d2c88",
+      "type": "camera_colors",
+      "params": {
+        "palette": 1
+      },
+      "bypass": false,
+      "expanded": false
+    },
+    {
+      "id": "2a64178646e4475098384781bba6471e",
+      "type": "brightness",
+      "params": {
+        "value": 50.0
+      },
+      "bypass": false,
+      "expanded": false
+    },
+    {
+      "id": "6633e0a99d04428fa0e513a4067e7a67",
+      "type": "contrast",
+      "params": {
+        "value": 50.0
+      },
+      "bypass": false,
+      "expanded": false
+    },
+    {
+      "id": "8decbb484bd44a3895e9d6112f329d3e",
+      "type": "gamma",
+      "params": {
+        "value": 50
       },
       "bypass": false,
       "expanded": false

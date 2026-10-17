@@ -2,13 +2,12 @@
 Visible drag placement and matching reorder boundaries for pipeline stacks.
 """
 
-import subprocess
-import sys
+from pathlib import Path
 
-from test_capture_panel import popup_environment
+from support.qt_process import run_popup
 
 
-def test_placement_bar_matches_drop_and_respects_endpoints_and_locks() -> None:
+def test_placement_bar_matches_drop_and_respects_endpoints_and_locks(tmp_path: Path) -> None:
     """
     Exercise stack geometry, accepted moves, rejection and marker cleanup offscreen.
     """
@@ -104,6 +103,7 @@ editor.locked = False
 editor.insert("hardware", "brightness", 0)
 editor.insert("hardware", "contrast", 1)
 hardware = editor.stacks["hardware"]
+editor.stack_titles["hardware"].setChecked(True)
 hardware.setCurrentRow(0)
 app.processEvents()
 end = QPoint(20, hardware.visualItemRect(hardware.item(1)).bottom() + 10)
@@ -128,12 +128,5 @@ app.processEvents()
 assert [n["type"] for n in editor.document["branches"]["B"]] == ["source", "brightness", "gamma"]
 window.close()
 """
-    result = subprocess.run(
-        [sys.executable, "-c", script],
-        env=popup_environment(),
-        capture_output=True,
-        text=True,
-        timeout=20,
-        check=False,
-    )
+    result = run_popup(script, tmp_path)
     assert result.returncode == 0, result.stderr

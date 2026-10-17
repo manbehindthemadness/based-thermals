@@ -1,16 +1,16 @@
 # Pipeline exports
 
 These eight files capture the complete current saved preset collection on
-2026-10-13. Import them from **Imaging → Pipeline → Import**. The same processing
+2026-10-17. Import them from **Imaging → Pipeline → Import**. The same processing
 settings are bundled in `src/based_thermals/predefined_pipeline_presets.json`, so
 installed users see them in the preset dropdown without local preference files.
 
-**Detail Enhanced GPU Upscale** was refreshed from the current saved preset on
-2026-10-14. It includes Balanced camera processing, detail enabled at 91, noise
-mode 2 with all three noise strengths at 100, boost mode 3 and camera palette 10.
-It retains three-pass GPU RealESR enhancement and its tuned raw Scharr edge branch.
-The bundled definition and matching export include these hardware settings, so
-clearing local settings restores the complete preset.
+All eight presets were refreshed from the saved app collection on 2026-10-17.
+They include the saved camera processing, boost, palette, detail and noise settings,
+plus explicit brightness, contrast and gamma controls at 50. Their saved software
+branches, enhancement passes, model parameters and bypass states are retained.
+**Detail Enhanced GPU Upscale** retains detail at 91, boost mode 3, camera palette
+10, three-pass GPU RealESR enhancement and its tuned raw Scharr edge branch.
 
 - `Detail Enhanced CPU Upscale.pipeline.json`
 - `Detail Enhanced GPU Upscale.pipeline.json`

@@ -23,6 +23,7 @@ from .compute import backend_status, configure_backend_row, state_backend, updat
 from .dual import desired_camera_hardware as desired_hardware
 from .dual import stack_state
 from .hardware import node_capability
+from .hardware_section import HardwareSection
 from .presets import pipeline_content
 
 
@@ -32,8 +33,9 @@ def update_editor_state(self: PipelineEditor, state: Any, locked: Any) -> None:
     """
     self.last_state = state
     visible = bool(state.get("camera_profile", {}).get("visible"))
-    self.stacks["visible_hardware"].setVisible(visible)
-    self.stack_titles["visible_hardware"].setVisible(visible)
+    visible_section = self.stack_titles["visible_hardware"]
+    assert isinstance(visible_section, HardwareSection)
+    visible_section.set_available(visible)
     download_status = state.get("model_download_status", "")
     self.download_status.setText(download_status)
     self.download_status.setVisible(bool(download_status))

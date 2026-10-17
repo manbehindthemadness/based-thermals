@@ -22,9 +22,9 @@ def collapsed_nodes(document: dict) -> dict:
     return result
 
 
-def test_predefined_redneck_combat_matches_original_export() -> None:
+def test_predefined_redneck_combat_matches_saved_export() -> None:
     """
-    Preserve the original reference's settings with collapsed default nodes.
+    Preserve the saved reference's settings with collapsed default nodes.
     """
     from based_thermals.pipeline import validate_pipeline
     from based_thermals.pipeline_presets import predefined_presets
@@ -61,7 +61,10 @@ def test_predefined_redneck_gpu_retains_current_enhancement_and_branch_settings(
     assert any(n["type"] == "contours" for n in branch)
 
 
-def test_predefined_yautja_preserves_all_branches_and_apple_acnet():
+def test_predefined_yautja_preserves_all_branches_and_apple_acnet() -> None:
+    """
+    Preserve the saved four-branch composition and explicit camera settings.
+    """
     from based_thermals.pipeline_presets import predefined_presets
 
     document = predefined_presets()["Yautja"]
@@ -79,7 +82,9 @@ def test_predefined_yautja_preserves_all_branches_and_apple_acnet():
     assert document["branches"]["C"][0]["params"]["source"] == "raw"
     assert document["branches"]["C"][1]["params"]["amount"] == 3.0
     assert document["branches"]["D"][1]["params"]["palette"] == "camera_19"
-    assert [n["type"] for n in document["hardware"]] == ["detail", "noise", "preset"]
+    assert [n["type"] for n in document["hardware"]] == [
+        "detail", "noise", "preset", "boost", "camera_colors", "brightness", "contrast", "gamma",
+    ]
 
 
 def test_predefined_yautja_gpu_preserves_compositing_and_realesr_settings() -> None:
@@ -90,7 +95,10 @@ def test_predefined_yautja_gpu_preserves_compositing_and_realesr_settings() -> N
 
     presets = predefined_presets()
     document = presets["Yautja GPU"]
-    assert [n["type"] for n in document["hardware"]] == ["detail", "noise", "preset"]
+    assert [n["type"] for n in document["hardware"]] == [
+        "detail", "noise", "preset", "boost", "camera_colors", "brightness", "contrast", "gamma",
+    ]
+    assert document["hardware"][0]["params"]["amount"] == 50.0
     branch = document["branches"]["B"]
     assert [n["type"] for n in branch] == ["source", "filter", "antialiasing", "filter", "preview"]
     assert branch[1]["params"]["filter"] == "laplacian"
@@ -131,6 +139,10 @@ def test_current_saved_presets_are_bundled_and_available_on_fresh_install(
     captured = collapsed_nodes(json.loads(export.read_text()))
     assert predefined_presets()[name] == captured
     assert load_presets()[name] == captured
+    hardware = {node["type"]: node for node in captured["hardware"]}
+    for control in ("brightness", "contrast", "gamma"):
+        assert hardware[control]["params"] == {"value": 50}
+        assert not hardware[control]["bypass"]
     assert not (tmp_path / "based-thermals" / "pipeline-presets.json").exists()
 
 
@@ -161,6 +173,9 @@ def test_predefined_detail_pipeline_retains_gpu_and_edge_branch(
         ),
         ("boost", {"value": 3}, False),
         ("camera_colors", {"palette": 10}, False),
+        ("brightness", {"value": 50.0}, False),
+        ("contrast", {"value": 50.0}, False),
+        ("gamma", {"value": 50}, False),
     ]
     assert not any(n["type"] == "onnx_superresolution" for n in original["software"])
     upscale = next(n for n in original["software"] if n["type"] == "enhance")

@@ -201,6 +201,9 @@ state = {"camera_profile": camera.profile.as_dict(), "camera_capabilities": a.ca
          "visible_camera_capabilities": b.capabilities(), "hardware": a.state(),
          "visible_hardware": b.state()}
 editor.update_state(state, False)
+assert not editor.stack_titles["visible_hardware"].isHidden()
+assert editor.stacks["visible_hardware"].isHidden()
+editor.stack_titles["visible_hardware"].setChecked(True)
 assert not editor.stacks["visible_hardware"].isHidden()
 editor.insert("visible_hardware", "device_control", 0)
 item = editor.nodes("visible_hardware")[0]

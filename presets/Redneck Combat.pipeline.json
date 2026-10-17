@@ -9,6 +9,74 @@
       },
       "bypass": false,
       "expanded": false
+    },
+    {
+      "id": "9e22c92fac75470bb7415783cd2fa21c",
+      "type": "brightness",
+      "params": {
+        "value": 50.0
+      },
+      "bypass": false,
+      "expanded": false
+    },
+    {
+      "id": "df6093fc1c544336a0c730a2836c80a7",
+      "type": "contrast",
+      "params": {
+        "value": 50.0
+      },
+      "bypass": false,
+      "expanded": false
+    },
+    {
+      "id": "2c130629155d4ffd98714b54f61a758a",
+      "type": "noise",
+      "params": {
+        "noise_mode": 2,
+        "noise_general": 100.0,
+        "noise_spatial": 100.0,
+        "noise_temporal": 100.0
+      },
+      "bypass": false,
+      "expanded": false
+    },
+    {
+      "id": "a70b4ef98c6748de922a93f13e655a4f",
+      "type": "detail",
+      "params": {
+        "enabled": true,
+        "amount": 50.0,
+        "fixed": false
+      },
+      "bypass": false,
+      "expanded": false
+    },
+    {
+      "id": "39ae884177d34774b9778287023c6e7e",
+      "type": "boost",
+      "params": {
+        "value": 1
+      },
+      "bypass": false,
+      "expanded": false
+    },
+    {
+      "id": "265514b4ff464c808441c17cc73665e6",
+      "type": "camera_colors",
+      "params": {
+        "palette": 1
+      },
+      "bypass": false,
+      "expanded": false
+    },
+    {
+      "id": "4410df142fa04b1fbadcc214509585f9",
+      "type": "gamma",
+      "params": {
+        "value": 50
+      },
+      "bypass": false,
+      "expanded": false
     }
   ],
   "software": [

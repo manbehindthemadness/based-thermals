@@ -9,6 +9,74 @@
       },
       "bypass": false,
       "expanded": false
+    },
+    {
+      "id": "b0cf19cde35c4fbfa664f55c5bfd1aa2",
+      "type": "boost",
+      "params": {
+        "value": 1
+      },
+      "bypass": false,
+      "expanded": false
+    },
+    {
+      "id": "52d3154dcef84ef79f7b389bd5da5c6c",
+      "type": "noise",
+      "params": {
+        "noise_mode": 2,
+        "noise_general": 100.0,
+        "noise_spatial": 100.0,
+        "noise_temporal": 100.0
+      },
+      "bypass": false,
+      "expanded": false
+    },
+    {
+      "id": "3f363a70328c491f90bfb782607b3ef9",
+      "type": "detail",
+      "params": {
+        "enabled": true,
+        "amount": 50.0,
+        "fixed": false
+      },
+      "bypass": false,
+      "expanded": false
+    },
+    {
+      "id": "0a2685bbc25745eb9e655513fac62e3b",
+      "type": "camera_colors",
+      "params": {
+        "palette": 1
+      },
+      "bypass": false,
+      "expanded": false
+    },
+    {
+      "id": "85fe136aba724414b81afbdeb3b34bbf",
+      "type": "brightness",
+      "params": {
+        "value": 50.0
+      },
+      "bypass": false,
+      "expanded": false
+    },
+    {
+      "id": "1de65f2ab8f44e53960a5f3ce3961372",
+      "type": "contrast",
+      "params": {
+        "value": 50.0
+      },
+      "bypass": false,
+      "expanded": false
+    },
+    {
+      "id": "69d42895a7f84722bc7a9263cd253221",
+      "type": "gamma",
+      "params": {
+        "value": 50
+      },
+      "bypass": false,
+      "expanded": false
     }
   ],
   "software": [
