@@ -142,9 +142,13 @@ def run_window(
     app.setApplicationDisplayName(APP_NAME if title == APP_NAME else f"{APP_NAME} · {title}")
 
     def send(message: dict) -> None:
+        """
+        Forward commands or allow the window to close if its parent has disconnected.
+        """
         try:
             print(json.dumps(message), flush=True)
         except BrokenPipeError:
+            window.setProperty("parent_disconnected", True)
             app.quit()
 
     window = window_type(send)
@@ -153,6 +157,9 @@ def run_window(
     incoming = b""
 
     def poll_parent() -> None:
+        """
+        Apply complete state messages and release the window when its parent closes the pipe.
+        """
         nonlocal incoming
         while True:
             try:
@@ -160,6 +167,7 @@ def run_window(
             except BlockingIOError:
                 break
             if not chunk:
+                window.setProperty("parent_disconnected", True)
                 app.quit()
                 return
             incoming += chunk

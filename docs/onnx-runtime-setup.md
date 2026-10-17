@@ -5,6 +5,13 @@ before creating a camera or starting acquisition. Help, version and web USB diag
 do not install packages. Setup also runs on later launches, so a dependency sync does
 not permanently remove GPU support.
 
+The application sets `ORT_DISABLE_TELEMETRY=1` before importing ONNX Runtime.
+Its probes, processing workers and Custom nodes inherit this opt-out, which
+disables the runtime's telemetry uploader, events and persistent device identifier
+on supported builds without changing inference or provider selection. This is
+independent of application debug logging. Restart the app to apply it to existing
+processes. See [ONNX Runtime's telemetry controls](https://github.com/microsoft/onnxruntime/blob/main/docs/Privacy.md#disabling-telemetry).
+
 | Host capability | Runtime selection |
 | --- | --- |
 | macOS with a Metal device | Standard `onnxruntime>=1.23,<1.31`, with CoreML verification |

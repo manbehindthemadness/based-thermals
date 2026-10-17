@@ -121,6 +121,14 @@ In portrait layout, charts and their controls move below the image. The main
 toolbar uses slightly narrower native buttons to fit the default rotated image
 width with graphs hidden. Smaller windows use Qt's toolbar overflow menu.
 Watch the status bar for download progress, camera errors, and rejected settings.
+On exit, the app restores the camera settings it changed before releasing USB.
+The viewer shows a closing message until camera cleanup finishes. Keep the camera
+connected until the viewer disappears. If it is disconnected during
+cleanup, restoration stops on the failed operation and the app logs the error;
+the original configuration remains saved under
+`$XDG_STATE_HOME/based-thermals/camera-baselines` (default
+`~/.local/state/based-thermals/camera-baselines`). When debug logging is enabled,
+each shutdown stage's duration is recorded in the application log for troubleshooting.
 The number beside the status is elapsed viewport draw time in milliseconds:
 image preparation, measurement overlays, graph composition, frame copying and Qt
 painting. Camera waits, file saving, input handling, asynchronous processing and

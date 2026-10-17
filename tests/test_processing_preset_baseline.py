@@ -176,8 +176,18 @@ def test_restoration_places_original_live_preset_after_sdk_refreshes(
     hardware.set_processing_preset("shadow")
     hardware.set("contrast", 70, True)
     operations.clear()
+    write = hardware.write
+
+    def restore_block(key: tuple[int, int], payload: bytes) -> None:
+        """
+        Track the verified SDK write before the single original-preset restoration.
+        """
+        operations.append("sdk")
+        write(key, payload)
+
+    hardware.write = restore_block
     hardware.restore()
-    assert operations == ["shadow", "soft"]
+    assert operations == ["sdk", "soft"]
     assert hardware.processing_preset == "soft"
 
 

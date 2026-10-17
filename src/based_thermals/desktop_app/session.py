@@ -15,6 +15,7 @@ from .maintenance import MaintenanceController
 from .measurement_drawing import MeasurementDrawingController
 from .presentation import PresentationController
 from .settings import SettingsController
+from .shutdown import shutdown_stage
 from .viewer import ViewerController
 
 
@@ -336,61 +337,87 @@ class DesktopSession(
         Shutdown for the current desktop session.
         """
         self.diagnostics.stage("shutdown")
-        try:
-            self.api.EXPORT_JOBS.close()
-        except (OSError, self.api.subprocess.TimeoutExpired) as exc:
-            self.api.LOG.error("Could not stop model preparation: %s", exc)
-        if self.pipeline_worker is not None:
-            self.pipeline_worker.close()
-        try:
-            self.reflected_calibration.cancel()
-        except self.api.CameraError as exc:
-            self.api.LOG.error("Could not restore reflector measurement settings: %s", exc)
-        try:
-            self.emissivity_calibration.cancel()
-        except self.api.CameraError as exc:
-            self.api.LOG.error("Could not restore pre-calibration emissivity: %s", exc)
-        self.persist_settings()
         if self.viewer is not None:
-            # Fullscreen dimensions must never replace the user's windowed size.
-            self.last_window_size = self.viewer.windowed_size or self.last_window_size
-            self.viewer.close()
-        if self.last_window_size is not None:
+            self.viewer.update({"closing": True})
+        with shutdown_stage(self.api.LOG, self.diagnostics, "model preparation"):
             try:
-                self.api.save_main_window_size(self.last_window_size)
-            except OSError as exc:
-                self.api.LOG.warning("Could not save main window size: %s", exc)
-        try:
-            self.graphs.close()
-        except OSError as exc:
-            self.api.LOG.error("Could not finalize temperature log: %s", exc)
-        self.stop_recording()
-        self.capture_panel.close()
-        self.view_panel.close()
-        self.graph_panel.close()
-        self.spots_panel.close()
-        self.maintenance_panel.close()
-        self.pointer_monitor.close()
-        self.save_dialog.close()
-        try:
-            self.hardware.restore()
-        except (self.api.CameraError, ValueError) as exc:
-            self.api.LOG.error("Could not restore camera settings: %s", exc)
-        if self.visible_hardware is not None:
+                self.api.EXPORT_JOBS.close()
+            except (OSError, self.api.subprocess.TimeoutExpired) as exc:
+                self.api.LOG.error("Could not stop model preparation: %s", exc)
+        with shutdown_stage(self.api.LOG, self.diagnostics, "image pipeline"):
+            if self.pipeline_worker is not None:
+                self.pipeline_worker.close()
+        with shutdown_stage(self.api.LOG, self.diagnostics, "calibration restoration"):
             try:
-                self.visible_hardware.restore()
-            except (self.api.CameraError, ValueError) as exc:
-                self.api.LOG.error("Could not restore visible-light settings: %s", exc)
-        if self.hardware.capabilities().get("features", {}).get("auto_calibrate"):
-            try:
-                self.hardware.restore_auto_calibrate()
+                self.reflected_calibration.cancel()
             except self.api.CameraError as exc:
-                self.api.LOG.error("Could not restore automatic camera calibration: %s", exc)
-        self.display_awake.close()
-        if self.frame_pump is not None:
-            self.frame_pump.close()
-        self.camera.close()
-        self.api.cv2.destroyAllWindows()
-        self.diagnostics.close()
-        self.support_export.close()
+                self.api.LOG.error("Could not restore reflector measurement settings: %s", exc)
+            try:
+                self.emissivity_calibration.cancel()
+            except self.api.CameraError as exc:
+                self.api.LOG.error("Could not restore pre-calibration emissivity: %s", exc)
+        with shutdown_stage(self.api.LOG, self.diagnostics, "preferences and viewer"):
+            self.persist_settings()
+            if self.viewer is not None:
+                # Fullscreen dimensions must never replace the user's windowed size.
+                self.last_window_size = self.viewer.windowed_size or self.last_window_size
+            if self.last_window_size is not None:
+                try:
+                    self.api.save_main_window_size(self.last_window_size)
+                except OSError as exc:
+                    self.api.LOG.warning("Could not save main window size: %s", exc)
+        with shutdown_stage(self.api.LOG, self.diagnostics, "graphs and recording"):
+            try:
+                self.graphs.close()
+            except OSError as exc:
+                self.api.LOG.error("Could not finalize temperature log: %s", exc)
+            self.stop_recording()
+        with shutdown_stage(self.api.LOG, self.diagnostics, "capture panel"):
+            self.capture_panel.close()
+        with shutdown_stage(self.api.LOG, self.diagnostics, "view panel"):
+            self.view_panel.close()
+        with shutdown_stage(self.api.LOG, self.diagnostics, "graph panel"):
+            self.graph_panel.close()
+        with shutdown_stage(self.api.LOG, self.diagnostics, "measurements panel"):
+            self.spots_panel.close()
+        with shutdown_stage(self.api.LOG, self.diagnostics, "maintenance panel"):
+            self.maintenance_panel.close()
+        with shutdown_stage(self.api.LOG, self.diagnostics, "pointer and save dialog"):
+            self.pointer_monitor.close()
+            self.save_dialog.close()
+        try:
+            with shutdown_stage(self.api.LOG, self.diagnostics, "camera settings restoration"):
+                try:
+                    self.hardware.restore()
+                except (self.api.CameraError, ValueError) as exc:
+                    self.api.LOG.error("Could not restore camera settings: %s", exc)
+            with shutdown_stage(self.api.LOG, self.diagnostics, "visible camera restoration"):
+                if self.visible_hardware is not None:
+                    try:
+                        self.visible_hardware.restore()
+                    except (self.api.CameraError, ValueError) as exc:
+                        self.api.LOG.error("Could not restore visible-light settings: %s", exc)
+            with shutdown_stage(self.api.LOG, self.diagnostics, "automatic calibration restoration"):
+                if self.hardware.capabilities().get("features", {}).get("auto_calibrate"):
+                    try:
+                        self.hardware.restore_auto_calibrate()
+                    except self.api.CameraError as exc:
+                        self.api.LOG.error("Could not restore automatic camera calibration: %s", exc)
+            with shutdown_stage(self.api.LOG, self.diagnostics, "display wake lock"):
+                self.display_awake.close()
+            with shutdown_stage(self.api.LOG, self.diagnostics, "frame pump"):
+                if self.frame_pump is not None:
+                    self.frame_pump.close()
+            with shutdown_stage(self.api.LOG, self.diagnostics, "camera connection"):
+                self.camera.close()
+        finally:
+            if self.viewer is not None:
+                self.viewer.close()
+        with shutdown_stage(self.api.LOG, self.diagnostics, "OpenCV windows"):
+            self.api.cv2.destroyAllWindows()
+        with shutdown_stage(self.api.LOG, self.diagnostics, "diagnostics"):
+            self.diagnostics.close()
+        with shutdown_stage(self.api.LOG, self.diagnostics, "support export"):
+            self.support_export.close()
+        self.api.LOG.debug("Shutdown: cleanup complete; stopping log listener")
         self.support_logging.close()

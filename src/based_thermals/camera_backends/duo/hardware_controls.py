@@ -17,6 +17,7 @@ from uuid import uuid4
 import usb.core
 
 from ..errors import CameraError
+from .restoration import restored_fields
 
 if TYPE_CHECKING:
     from .. import ControlSpec
@@ -648,6 +649,9 @@ class HardwareControls:
         self.error = ""
 
     def set(self, name: str, value: object, enabled: bool) -> None:
+        """
+        Apply one SDK control while preserving other targets and unrelated configuration.
+        """
         if not isinstance(enabled, bool):
             raise TypeError("Control enabled state must be a boolean")
         spec = HARDWARE_CONTROLS[name]
@@ -662,15 +666,11 @@ class HardwareControls:
         values = {**self.values, name: cast(float, value)}
         key = spec.selector, spec.command
         previous = self.read(*key)
-        target = bytearray(previous)
         # Restore only owned fields; retain all unrelated configuration bytes.
-        for control in HARDWARE_CONTROLS.values():
-            if (control.selector, control.command) == key:
-                size = struct.calcsize("<" + control.fmt)
-                start = control.offset
-                target[start : start + size] = self.original[key][start : start + size]
-                for offset, _ in control.extra:
-                    target[offset] = self.original[key][offset]
+        target = bytearray(restored_fields(previous, self.original[key], (
+            control for control in HARDWARE_CONTROLS.values()
+            if (control.selector, control.command) == key
+        )))
         for other_name, control in HARDWARE_CONTROLS.items():
             if (control.selector, control.command) == key:
                 if other_name in proposed:
@@ -711,18 +711,28 @@ class HardwareControls:
 
     def restore(self) -> None:
         """
-        Restore SDK controls before the live preset, since SDK writes can reload its bank.
+        Restore each owned SDK block once, then restore the original live preset.
         """
         self.restore_tone()
         self.restore_fixed_range()
-        for name in tuple(self.enabled | self._pipeline_defaults.keys()):
-            default = self._pipeline_defaults.pop(name, None)
-            try:
-                self.set(name, self.values[name], False)
-            except (CameraError, ValueError, TypeError):
-                if default is not None:
-                    self._pipeline_defaults[name] = default
-                raise
+        owned = self.enabled | self._pipeline_defaults.keys()
+        for key in BLOCK_LENGTHS:
+            names = {
+                name for name in owned
+                if (HARDWARE_CONTROLS[name].selector, HARDWARE_CONTROLS[name].command) == key
+            }
+            if not names:
+                continue
+            previous = self.read(*key)
+            target = restored_fields(previous, self.original[key], (
+                HARDWARE_CONTROLS[name] for name in names
+            ))
+            # A failed write keeps ownership for recovery; do not retry on a lost device.
+            if target != previous:
+                self.write(key, target)
+            self.enabled.difference_update(names)
+            for name in names:
+                self._pipeline_defaults.pop(name, None)
         self.restore_processing_preset()
 
     @property

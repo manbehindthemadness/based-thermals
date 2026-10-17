@@ -56,6 +56,7 @@ class ViewerWindow(QMainWindow):
         """
         super().__init__()
         self.send = send
+        self._closing = False
         self._mapping: mmap.mmap | None = None
         self._path = ""
         self._windowed_size: list[int] | None = None
@@ -139,6 +140,10 @@ class ViewerWindow(QMainWindow):
         """
         Handle window-local fullscreen, forwarding other actions unchanged.
         """
+        if self._closing:
+            return
+        if message.get("action") == "quit":
+            self.begin_closing()
         if message.get("action") == "rotate":
             self.orientation_dialog.open_state(self._viewer_state)
             return
@@ -191,6 +196,10 @@ class ViewerWindow(QMainWindow):
         """
         Update controls and image independently, without raising the window on each frame.
         """
+        if state.get("closing", False):
+            self.begin_closing()
+        if self._closing:
+            return
         frame = state.get("frame")
         if isinstance(frame, dict):
             try:
@@ -276,6 +285,9 @@ class ViewerWindow(QMainWindow):
         """
         Keep viewer shortcuts and let Escape leave fullscreen before requesting quit.
         """
+        if self._closing:
+            event.accept()
+            return
         key = event.key()
         directions: dict[int, str] = {
             Qt.Key.Key_Left: "left",
@@ -308,9 +320,9 @@ class ViewerWindow(QMainWindow):
             event.accept()
             return
         text = event.text().lower()
-        if key == Qt.Key.Key_Escape:
-            self.send({"action": "quit"})
-        elif text in ("q", "o", "p", " ", "g", "l", "f", "v", "s", "c"):
+        if key == Qt.Key.Key_Escape or text == "q":
+            self._command({"action": "quit"})
+        elif text in ("o", "p", " ", "g", "l", "f", "v", "s", "c"):
             self.send({"action": "key", "key": ord(text)})
         else:
             super().keyPressEvent(event)
@@ -328,12 +340,31 @@ class ViewerWindow(QMainWindow):
 
     def closeEvent(self, event: QCloseEvent) -> None:
         """
-        Notify the parent to restore hardware and finish recordings on window close.
+        Keep shutdown visible until the parent releases hardware and closes its pipe.
         """
-        self._send_geometry()
-        self.send({"action": "quit"})
+        if not self.property("parent_disconnected"):
+            self._send_geometry()
+            self._command({"action": "quit"})
+            event.ignore()
+            return
         self._close_mapping()
         super().closeEvent(event)
+
+    def begin_closing(self) -> None:
+        """
+        Freeze interaction while the parent finalizes recordings and restores hardware.
+        """
+        self._closing = True
+        self.setWindowTitle(f"{APP_NAME} — Closing")
+        self._status_text = "Closing — restoring camera settings. Keep the camera connected…"
+        self._update_status()
+        self.draw_counter.hide()
+        self.total_counter.hide()
+        self.toolbar.setEnabled(False)
+        self.toolbar.graph_toolbar.setEnabled(False)
+        self.drawing_toolbar.setEnabled(False)
+        self.canvas.setEnabled(False)
+        self.orientation_dialog.close()
 
 
 def main() -> int:

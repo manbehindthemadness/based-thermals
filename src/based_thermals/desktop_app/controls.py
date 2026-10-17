@@ -233,7 +233,7 @@ class ControlsController(SessionState):
                 self.camera_operation_busy = True
                 self.camera_operation = f"Applying {operation_title.lower()}… Image and graph updates may pause briefly."
                 self.camera_operation_until = float("inf")
-                self.api.LOG.info("Camera operation started: %s", command)
+                self.api.LOG.debug("Camera operation started: %s", command)
                 self.view_panel.update(self.view_state())
             try:
                 if self.camera_profile.id != "duo":
@@ -506,7 +506,7 @@ class ControlsController(SessionState):
                     self.camera_operation_busy = False
                     self.camera_operation = operation_error or f"{operation_title} updated"
                     self.camera_operation_until = self.api.time.monotonic() + 8
-                    self.api.LOG.info(
+                    self.api.LOG.debug(
                         "Camera operation finished: %s in %.3fs; %s",
                         operation_title,
                         self.api.time.monotonic() - operation_started,
