@@ -353,7 +353,11 @@ class ControlRow(QWidget):
         interacting = self.slider is not None and (
             self.slider.is_interacting() if self.release_only else self.slider.isSliderDown()
         )
-        if self.timer.isActive() or interacting:
+        # With keyboard tracking off, value() still contains the last committed
+        # number. Readback can differ from it at the display's precision and
+        # setValue() would replace text the user is still entering.
+        editing = isinstance(self.input, NoWheelSpinBox) and self.input.hasFocus()
+        if self.timer.isActive() or interacting or editing:
             return
         if value != self.value():
             self._set_value(value)
