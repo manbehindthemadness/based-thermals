@@ -103,7 +103,7 @@ class EnvironmentPresets:
             self.current_name = name
             session.persist_settings()
             session.hardware.error = ""
-            session.notify(f'Environment + calibration preset "{name}" applied')
+            session.notify(f'Environment + calibration preset "{name}" applied', debug=True)
             session.refresh_camera_measurements(command)
             return
         candidate = dict(self.presets)
@@ -134,7 +134,9 @@ class EnvironmentPresets:
         save_presets(candidate, session.camera_profile, session.hardware.specs)
         self.presets, self.current_name = candidate, selected
         session.persist_settings()
-        session.notify(f'Environment + calibration preset "{name}": {operation} complete')
+        session.notify(
+            f'Environment + calibration preset "{name}": {operation} complete', debug=True,
+        )
 
     def _apply(self, document: dict[str, Any]) -> None:
         """

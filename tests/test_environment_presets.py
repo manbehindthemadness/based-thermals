@@ -3,6 +3,7 @@ Combined user presets preserve environmental values and calibration references a
 """
 
 import json
+import logging
 from collections.abc import Iterator
 from copy import deepcopy
 from dataclasses import replace
@@ -66,6 +67,35 @@ def dispatch(session: Any, operation: str, name: str = "Desk", **kwargs: Any) ->
         {"action": "environment_preset", "operation": operation, "name": name, **kwargs},
     ]
     session.poll_camera_commands()
+
+
+def test_preset_confirmations_log_at_debug_without_hiding_status_or_rejections(
+    session: Any, caplog: pytest.LogCaptureFixture,
+) -> None:
+    """
+    Keep successful preset actions out of INFO logs while retaining on-screen feedback.
+    """
+    session.notify = DesktopSession.notify.__get__(session, DesktopSession)
+    caplog.set_level(logging.DEBUG, logger=desktop.LOG.name)
+    for operation, name, extra in (
+        ("save", "Desk", {}),
+        ("rename", "Desk", {"new_name": "Studio"}),
+        ("load", "Studio", {}),
+        ("delete", "Studio", {}),
+    ):
+        caplog.clear()
+        dispatch(session, operation, name, **extra)
+        confirmations = [
+            record for record in caplog.records
+            if record.message.startswith("Environment + calibration preset")
+        ]
+        assert len(confirmations) == 1
+        assert confirmations[0].levelno == logging.DEBUG
+        assert session.status_message == confirmations[0].message
+    caplog.clear()
+    dispatch(session, "delete", "Missing")
+    assert session.status_message.startswith("Camera setting rejected:")
+    assert any(record.levelno == logging.INFO for record in caplog.records)
 
 
 def test_user_collection_starts_empty_and_save_round_trips_everything(session: Any) -> None:

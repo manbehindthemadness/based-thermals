@@ -129,13 +129,14 @@ class SettingsController(SessionState):
         self.picker.x = self.picker.y = None
         self.persist_settings()
 
-    def notify(self: DesktopSession, message: str) -> None:
+    def notify(self: DesktopSession, message: str, *, debug: bool = False) -> None:
         """
-        Notify.
+        Show status feedback, optionally recording routine confirmations only at debug level.
         """
         self.status_message = message
         self.status_until = self.api.time.monotonic() + 8.0
-        self.api.LOG.info("%s", message)
+        log = self.api.LOG.debug if debug else self.api.LOG.info
+        log("%s", message)
 
     def rotate_view(self: DesktopSession) -> None:
         """
