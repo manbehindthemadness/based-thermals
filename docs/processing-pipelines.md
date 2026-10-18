@@ -84,7 +84,8 @@ restored values. Software nodes and branches remain intact. Environmental
 corrections remain outside the hardware pipeline; other camera backends expose
 only their available device-level display controls.
 **Thermal Height Map** embeds the Thermal Surface Custom package and its saved
-view controls, with processed-preview and raw inset branches. No module-folder
+view controls, with processed-preview and raw inset branches. The saved layout
+includes locked Markup labels, arrows and a surface caption. No module-folder
 import or model download is needed. Its surface elevation follows grayscale
 camera Preview intensity; it is relative visualization, not physical depth or
 a calibrated temperature axis. Scene rotation is saved at 90°; adjust it for

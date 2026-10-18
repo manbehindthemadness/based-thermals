@@ -48,6 +48,17 @@ def test_height_map_is_bundled_with_portable_source_and_saved_controls(
     assert document["branches"]["C"][0]["params"]["source"] == "raw"
     contrast = next(item for item in document["hardware"] if item["type"] == "contrast")
     assert contrast["params"]["value"] == 25
+    markup = next(item for item in document["software"] if item["type"] == "markup")
+    assert markup["params"]["locked"] is True
+    annotations = json.loads(markup["params"]["annotations"])
+    assert [item["kind"] for item in annotations] == [
+        "text", "text", "arrow", "arrow", "textbox",
+    ]
+    assert [item["text"] for item in annotations if item["kind"] == "text"] == [
+        "Hardware Upsample", "Raw Thermal Sensor\n",
+    ]
+    assert annotations[-1]["text"] == "3D height map representing raw thermal sensor output"
+    assert all(item["text_color"] == "dynamic" for item in annotations)
     assert not list(tmp_path.rglob("pipeline-presets.json"))
 
 

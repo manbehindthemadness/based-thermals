@@ -27,6 +27,8 @@ branches, enhancement passes, model parameters and bypass states are retained.
 so selecting the preset needs no module-folder import, downloads or extra dependencies.
 It retains the saved mesh detail 60, Turbo palette, 960-pixel output, view position,
 camera controls (including contrast 25), and processed-preview/raw inset branches.
+Refreshed from the saved preset on 2026-10-18, it also includes the locked Markup
+node with inset labels, two arrows, and a surface caption using dynamic contrast.
 The main surface uses grayscale camera Preview intensity as relative elevation;
 it is a visualization, not physical depth or a calibrated temperature axis.
 Its scene rotation of 90° is tuned for a rotated viewer; adjust the Custom node's

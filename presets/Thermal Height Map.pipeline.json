@@ -139,6 +139,16 @@
       "expanded": false
     },
     {
+      "id": "c377f96b49534b68b467f2c177a3cfc0",
+      "type": "markup",
+      "params": {
+        "annotations": "[{\"id\": \"fc40a95980bd4fcf94cc547d52f36053\", \"kind\": \"text\", \"points\": [[0.8269794721407624, 0.35332464146023473]], \"text\": \"Hardware Upsample\", \"border_color\": \"dynamic\", \"border_opacity\": 0.0, \"width\": 1, \"fill\": false, \"fill_color\": \"#000000\", \"fill_opacity\": 0.4, \"text_color\": \"dynamic\", \"text_opacity\": 1.0, \"font_size\": 11, \"z_index\": 0, \"bindings\": {}}, {\"id\": \"3dc5ed0a673e44478bb45cabd9554cfe\", \"kind\": \"text\", \"points\": [[0.9618768328445748, 0.35462842242503256]], \"text\": \"Raw Thermal Sensor\\n\", \"border_color\": \"dynamic\", \"border_opacity\": 0.0, \"width\": 1, \"fill\": false, \"fill_color\": \"#000000\", \"fill_opacity\": 0.4, \"text_color\": \"dynamic\", \"text_opacity\": 1.0, \"font_size\": 11, \"z_index\": 0, \"bindings\": {}}, {\"id\": \"ee0dbbc71dcb4e448b57c7166b298c8a\", \"kind\": \"arrow\", \"points\": [[0.9423264907135875, 0.45371577574967403], [0.8670576735092864, 0.2894393741851369]], \"text\": \"\", \"border_color\": \"dynamic\", \"border_opacity\": 1.0, \"width\": 1, \"fill\": false, \"fill_color\": \"#000000\", \"fill_opacity\": 0.4, \"text_color\": \"dynamic\", \"text_opacity\": 1.0, \"font_size\": 16, \"z_index\": 0, \"bindings\": {}}, {\"id\": \"b34bf6312f1a45149fa85375a719b1a1\", \"kind\": \"arrow\", \"points\": [[0.804496578690127, 0.44589308996088656], [0.7194525904203324, 0.636245110821382]], \"text\": \"\", \"border_color\": \"dynamic\", \"border_opacity\": 1.0, \"width\": 1, \"fill\": false, \"fill_color\": \"#000000\", \"fill_opacity\": 0.4, \"text_color\": \"dynamic\", \"text_opacity\": 1.0, \"font_size\": 16, \"z_index\": 0, \"bindings\": {}}, {\"id\": \"a4b4ce5e72d249279b6851fc9d6c5161\", \"kind\": \"textbox\", \"points\": [[0.009775171065493637, 0.5580182529335073], [0.027370478983382296, 0.9908735332464145]], \"z_index\": 0, \"text\": \"3D height map representing raw thermal sensor output\", \"bindings\": {}, \"border_color\": \"dynamic\", \"border_opacity\": 1.0, \"width\": 1, \"fill\": true, \"fill_color\": \"dynamic\", \"fill_opacity\": 0.0, \"text_color\": \"dynamic\", \"text_opacity\": 1.0, \"font_size\": 10}]",
+        "locked": true
+      },
+      "bypass": false,
+      "expanded": false
+    },
+    {
       "id": "c013ad952dfd45fb983e7cd67dad4345",
       "type": "output",
       "params": {},
