@@ -32,8 +32,9 @@ node with inset labels, two arrows, and a surface caption using dynamic contrast
 The main surface uses grayscale camera Preview intensity as relative elevation;
 it is a visualization, not physical depth or a calibrated temperature axis.
 Its scene rotation of 90° is tuned for a rotated viewer; adjust the Custom node's
-Scene rotation for your display orientation. Sensor measurement overlays do not
-follow the projected surface. See the [Thermal Surface example](../examples/custom_nodes/Thermal%20Surface/README.md).
+Scene rotation for your display orientation. Sensor measurement overlays are
+automatically hidden on the projected surface; sampling, graphs and Markup
+variables remain active. See the [Thermal Surface example](../examples/custom_nodes/Thermal%20Surface/README.md).
 
 Exports retain saved node identities, expansion and bypass states, hardware
 controls, every software branch, and model/backend settings. Bundled presets use

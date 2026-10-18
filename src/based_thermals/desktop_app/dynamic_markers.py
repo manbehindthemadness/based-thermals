@@ -49,6 +49,7 @@ def draw_dynamic_markers(image: np.ndarray, rendered: RenderedThermalFrame) -> n
     temperatures = rendered.temperatures_celsius
     if (
         not rendered.measurements_valid
+        or not rendered.measurement_graphics_visible
         or not rendered.measurement_mapping_valid
         or not rendered.radiometry_available
         or temperatures.ndim != 2

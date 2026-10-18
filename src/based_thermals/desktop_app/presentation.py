@@ -358,6 +358,8 @@ class PresentationController(SessionState):
             self.status = self.rendered.measurement_status
         elif not self.rendered.measurement_mapping_valid:
             self.status = "Image registration unavailable; spatial measurements disabled"
+        elif not self.rendered.measurement_graphics_visible:
+            pass  # Sampling stays active; only sensor-space graphics are hidden on visualizations.
         elif self.reflected_calibration.active:
             self.display = self.api.draw_reflector_target(
                 self.display,
@@ -385,8 +387,9 @@ class PresentationController(SessionState):
                 self.renderer.scale,
                 self.renderer.temperature_unit,
             )
-        self.display = self.draw_measurement_draft(self.display)
-        self.display = edit.draw(self.display, self.spots, self.renderer.scale)
+        if self.rendered.measurement_graphics_visible:
+            self.display = self.draw_measurement_draft(self.display)
+            self.display = edit.draw(self.display, self.spots, self.renderer.scale)
         if self.show_instructions:
             self.display = self.api.draw_control_instructions(self.display)
         if self.recorder.is_recording:

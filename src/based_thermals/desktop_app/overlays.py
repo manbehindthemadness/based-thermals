@@ -147,7 +147,7 @@ def draw_sample_spots(
     """
     Draw styled measurement shapes and independently readable labels without altering samples.
     """
-    if not rendered.measurement_mapping_valid:
+    if not rendered.measurement_mapping_valid or not rendered.measurement_graphics_visible:
         return image
     image, mask = styled_shapes(image, spots, scale, draw_contrasting_overlay)
     text_mask = np.zeros_like(mask)
@@ -262,8 +262,10 @@ def draw_picker(
     dragging_spot: bool = False,
 ) -> tuple[np.ndarray, tuple[int, int] | None]:
     """
-    Draw picker.
+    Draw the native sampler only while sensor graphics are visible.
     """
+    if not rendered.measurement_graphics_visible:
+        return rendered.image, None
     image = rendered.image.copy()
     if pointer_over_image is False or picker.x is None or picker.y is None:
         return image, None

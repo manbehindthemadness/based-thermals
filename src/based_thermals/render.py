@@ -12,6 +12,7 @@ from .camera_backends import DUO_PROFILE, CameraFrame, CameraProfile, ReportedRe
 from .camera_backends.duo.camera import raw_temperatures
 from .camera_backends.visible import hold_thermal_frame, stream_metadata, visible_mapping_valid
 from .pipeline import default_pipeline, validate_pipeline
+from .pipeline_model.measurement_graphics import measurement_graphics_visible
 from .pipeline_model.sources import display_source, source_required
 from .pipeline_processing import PipelineProcessor
 from .upsampling import VisionUpsampler
@@ -41,6 +42,10 @@ class TemperatureStats:
 
 @dataclass(frozen=True)
 class RenderedThermalFrame:
+    """
+    Keep native readings, registration validity and visual overlay visibility independent.
+    """
+
     image: np.ndarray
     stats: TemperatureStats
     temperatures_celsius: np.ndarray
@@ -54,6 +59,7 @@ class RenderedThermalFrame:
     radiometry_available: bool = True
     measurement_mapping_valid: bool = True
     streams: dict = field(default_factory=dict)
+    measurement_graphics_visible: bool = True
 
 
 def draw_temperature_readout(
@@ -402,7 +408,8 @@ class ThermalRenderer:
             return RenderedThermalFrame(heatmap, stats, celsius, oriented_raw, source,
                                        self.view_settings(), measurements_valid,
                                        self.measurement_status, decoded.profile, decoded.readings,
-                                       radiometry, mapping_valid, stream_metadata(decoded))
+                                       radiometry, mapping_valid, stream_metadata(decoded),
+                                       measurement_graphics_visible(processing_document))
 
         # Image processing and measurement data remain independent. Some modes
         # leave the preview empty; those retain the radiometric visualization.

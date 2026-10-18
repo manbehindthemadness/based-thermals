@@ -14,7 +14,7 @@ from .models import model_source
 @lru_cache(maxsize=16)
 def declarations(source: str) -> tuple[tuple[str, str], ...]:
     """
-    Extract literal CONFIG_JSON and MODEL_SOURCE assignments at module scope.
+    Extract literal configuration, model and output-kind assignments at module scope.
     """
     found: dict[str, str] = {}
     for statement in ast.parse(source).body:
@@ -25,7 +25,8 @@ def declarations(source: str) -> tuple[tuple[str, str], ...]:
         else:
             continue
         for target in targets:
-            if not isinstance(target, ast.Name) or target.id not in ("CONFIG_JSON", "MODEL_SOURCE"):
+            if (not isinstance(target, ast.Name)
+                    or target.id not in ("CONFIG_JSON", "MODEL_SOURCE", "OUTPUT_KIND")):
                 continue
             if target.id in found:
                 raise ValueError(f"Duplicate custom declaration: {target.id}")
@@ -36,9 +37,13 @@ def declarations(source: str) -> tuple[tuple[str, str], ...]:
                 if target.id == "CONFIG_JSON":
                     text = value if isinstance(value, str) else json.dumps(value, allow_nan=False)
                     configuration(text)
-                else:
+                elif target.id == "MODEL_SOURCE":
                     model_source(value)
                     text = json.dumps(value, allow_nan=False)
+                else:
+                    if value not in ("image", "visualization"):
+                        raise ValueError("Choose image or visualization")
+                    text = json.dumps(value)
             except (ValueError, TypeError, RecursionError) as exc:
                 raise ValueError(f"{target.id} must be valid literal metadata: {exc}") from exc
             found[target.id] = text

@@ -10,6 +10,8 @@ import numpy as np
 
 from .surface import SurfaceRenderer
 
+OUTPUT_KIND = "visualization"
+
 CONFIG_JSON = {
     "defaults": {
         "detail": 40, "yaw": -35, "tilt": 50, "height": 0.7,

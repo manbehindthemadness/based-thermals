@@ -6,6 +6,11 @@ orthographic camera, thermal colors, lighting, side walls and optional mesh edge
 It uses NumPy and OpenCV already included with the viewer: no GPU context, model,
 download, additional dependency or background worker is needed.
 
+The package declares `OUTPUT_KIND = "visualization"`, so sensor measurement
+graphics are automatically hidden on this projected view. Measurements stay
+enabled and keep supplying graph/CSV values and live Markup variables. Bypass
+the node or return to a camera image feed to show the graphics again.
+
 For a ready-made layout, select the bundled **Thermal Height Map** pipeline preset.
 It embeds this package, saved view controls and processed-preview/raw insets;
 no module-folder import is required. That preset uses grayscale camera Preview
