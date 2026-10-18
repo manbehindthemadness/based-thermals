@@ -238,7 +238,11 @@ class MarkupControls(QWidget):
         selected = next((item for item in items if item["id"] == self.selected_id()), None)
         if selected is None:
             return
-        dialog = TableDialog(self.text.toPlainText(), self.variable_catalog, self.variable_bindings(), self)
+        try:
+            dialog = TableDialog(self.text.toPlainText(), self.variable_catalog, self.variable_bindings(), self)
+        except ValueError as exc:
+            QMessageBox.warning(self, "Markup", str(exc))
+            return
         if dialog.exec() != dialog.DialogCode.Accepted:
             return
         selected.update(kind="table", text=dialog.text(), bindings=dialog.bindings)

@@ -7,6 +7,50 @@ from pathlib import Path
 from support.qt_process import run_popup
 
 
+def test_table_conversion_rejects_oversized_labels_without_changing_saved_objects(
+    tmp_path: Path,
+) -> None:
+    """
+    Show actionable validation for valid labels that exceed table bounds, retaining all saved edits.
+    """
+    script = '''
+from copy import deepcopy
+from PySide6.QtWidgets import QApplication, QDialog, QMessageBox, QWidget
+from based_thermals.view_window import ViewWindow
+from based_thermals.markup.model import read_annotations
+app = QApplication([])
+window = ViewWindow(lambda message: None)
+editor = window.pipeline_editor
+editor.insert("software", "markup", 1)
+node = editor.document["software"][1]
+controls = editor.markup_widgets[node["id"]]
+controls.add.click()
+warnings = []
+def warn(parent: QWidget, title: str, message: str) -> None:
+    """
+    Capture validation without blocking on an unrelated modal confirmation.
+    """
+    warnings.append((title, message))
+QMessageBox.warning = warn
+for index, text in enumerate(("\\n".join(["Temperature"] * 33), "\\t".join(["Value"] * 17))):
+    controls.text.setPlainText(text)
+    assert read_annotations(node["params"]["annotations"])[0]["text"] == text
+    before = deepcopy(editor.document)
+    serial = editor.edit_serial
+    dialogs = len(controls.findChildren(QDialog))
+    controls.edit_table()
+    assert len(warnings) == index + 1
+    assert warnings[-1] == ("Markup", "Markup tables support up to 32 rows and 16 columns")
+    assert editor.document == before and editor.edit_serial == serial
+    assert controls.text.toPlainText() == text
+    assert app.activeModalWidget() is None
+    assert len(controls.findChildren(QDialog)) == dialogs
+window.close()
+'''
+    result = run_popup(script, tmp_path)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
 def test_variable_formula_table_editing_export_and_focus(tmp_path: Path) -> None:
     """
     Drive real modal menus and fields, including saved bindings and ordinary state echoes.

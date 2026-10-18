@@ -106,7 +106,7 @@ def catalog(document: dict[str, Any], live: dict[str, Any], measurements: list[d
     """
     Return searchable human labels plus canonical identities and snapshot values for the picker.
     """
-    from ..pipeline import CATALOG
+    from ..pipeline import CATALOG, Parameter
 
     unit = live.get("Temperature.Unit", "C")
     result = [{"key": key, "alias": key, "group": group, "label": title,
@@ -129,7 +129,7 @@ def catalog(document: dict[str, Any], live: dict[str, Any], measurements: list[d
         name = f"{title} {counts[group, kind]}"
         for path, value in [("/bypass", node["bypass"]), *leaves(node["params"], "/params")]:
             field = path.rsplit("/", 1)[-1]
-            spec = definitions.get(field) if path == f"/params/{field}" else None
+            spec: Parameter | None = definitions.get(field) if path == f"/params/{field}" else None
             label = spec.title if spec is not None else field.replace("_", " ").title()
             result.append({"key": f"Pipeline/{node['id']}{path}",
                            "alias": f"{group} / {name} / {path.removeprefix('/params/').replace('/', ' / ')}"[:160],

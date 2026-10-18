@@ -274,7 +274,8 @@ class MarkupController(SessionState):
             for item in items:
                 if item["kind"] == "text" and item["points"] and "text_offset" not in item:
                     rendered = render_item(item, self.markup_live)
-                    offset = center_offset(self.rendered.image.shape[:2], rendered, matrix)
+                    height, width = self.rendered.image.shape[:2]
+                    offset = center_offset((height, width), rendered, matrix)
                     if offset is not None:
                         item["text_offset"] = offset
                         updated = True

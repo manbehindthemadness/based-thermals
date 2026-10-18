@@ -225,15 +225,15 @@ class TableDialog(QDialog):
 
     def __init__(self, text: str, entries: Catalog, bindings: dict[str, str], parent: QWidget) -> None:
         """
-        Keep cell edits and new bindings local until the whole table is accepted.
+        Validate before allocating widgets; keep edits local until the whole table is accepted.
         """
+        rows = cells(text)
         super().__init__(parent)
         self.setWindowTitle("Markup table")
         self.resize(760, 450)
         self.entries, self.bindings = entries, dict(bindings)
         layout = QVBoxLayout(self)
         dimensions = QHBoxLayout()
-        rows = cells(text)
         self.rows, self.columns = QSpinBox(), QSpinBox()
         self.rows.setRange(1, 32)
         self.columns.setRange(1, 16)

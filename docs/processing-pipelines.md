@@ -277,7 +277,8 @@ Standalone processors can resolve pipeline settings; desktop-only runtime values
 are unavailable without a supplied snapshot.
 
 Choose **Table** when adding an element, or right-click Text → **Edit as table…**.
-The cell editor supports 1–32 rows and 1–16 columns. Right-click a cell to add
+The cell editor supports 1–32 rows and 1–16 columns. Converting larger label text
+shows a validation message and preserves the label. Right-click a cell to add
 variables or formulas; accepting saves the entire table, while Cancel leaves it
 unchanged. Tab-separated columns and newline-separated rows also remain editable
 in Text. Draw the table bounds on the viewer; its grid and text use the same
