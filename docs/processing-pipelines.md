@@ -163,6 +163,17 @@ viewer's **Finish** button or Enter to commit; Esc cancels and Backspace undoes.
 annotation to move it; enable the node's **Lock** checkbox to prevent accidental
 drawing or movement. Quick measurement placement takes priority while enabled.
 
+The expanded element list selects annotations for appearance edits and on-image
+handles. Click an annotation to select and move it; drag a selected polygon
+vertex, line/arrow endpoint, label anchor, or one of the four box/ellipse bounds
+corners to edit that control. Controls keep their offset from the initial mouse
+press, so they do not jump when grabbed slightly off-center. Releasing outside
+the camera image discards the drag. With the viewer image focused, arrow keys
+nudge the selected control—or the whole annotation—by one display-image pixel
+in the visible direction, including after mirrors/rotation. Text fields and the
+element list retain their normal keyboard behavior. Selection is temporary;
+committed geometry saves with the pipeline. Lock prevents both dragging and nudging.
+
 Each object has independent border, text and fill colors/opacities, plus border
 width, text size and optional fill. **Dynamic** uses the measurement overlay's
 contrast behavior: inverted borders with a visible halo, outlined white text,

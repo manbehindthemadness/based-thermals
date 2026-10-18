@@ -341,6 +341,7 @@ class PresentationController(SessionState):
         """
         Draw status for the current desktop session.
         """
+        self.display = self.draw_markup_handles(self.display)
         edit = self.spot_drag.edit
         self.spots.display_cache.label_preview = (
             {edit.selected.number: edit.draft["label_position"]}

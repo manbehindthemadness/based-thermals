@@ -8,7 +8,7 @@ from copy import deepcopy
 from functools import partial
 from typing import TYPE_CHECKING, Any
 
-from PySide6.QtCore import QSignalBlocker
+from PySide6.QtCore import QSignalBlocker, Qt
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -16,6 +16,8 @@ from PySide6.QtWidgets import (
     QFormLayout,
     QHBoxLayout,
     QLabel,
+    QListWidget,
+    QListWidgetItem,
     QMessageBox,
     QPlainTextEdit,
     QPushButton,
@@ -44,6 +46,7 @@ class MarkupControls(QWidget):
         super().__init__()
         self.editor, self.item = editor, item
         self.updating = False
+        self.seen_selection: dict[str, Any] | None = None
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         hint = QLabel("Display annotations only. Connect this branch to the viewer, then draw on the image.")
@@ -64,9 +67,12 @@ class MarkupControls(QWidget):
         add_line.addWidget(self.kind, 1)
         add_line.addWidget(self.add)
         layout.addLayout(add_line)
-        self.objects = QComboBox()
+        self.objects = QListWidget()
         self.objects.setAccessibleName("Markup annotations")
-        self.objects.currentIndexChanged.connect(lambda _index: self.refresh())
+        self.objects.setMinimumHeight(120)
+        self.objects.setMaximumHeight(200)
+        self.objects.currentRowChanged.connect(self.select_object)
+        self.objects.itemClicked.connect(lambda _item: self.select_object(self.objects.currentRow()))
         layout.addWidget(self.objects)
         actions = QHBoxLayout()
         self.draw = QPushButton("Draw on image")
@@ -137,6 +143,31 @@ class MarkupControls(QWidget):
         """
         return deepcopy(list(read_annotations(self.item["params"]["annotations"])))
 
+    def selected_id(self) -> str | None:
+        """
+        Resolve the visible list selection by stable annotation identity.
+        """
+        selected = self.objects.currentItem()
+        return selected.data(Qt.ItemDataRole.UserRole) if selected is not None else None
+
+    def index_of(self, identity: str | None) -> int:
+        """
+        Locate a saved annotation without depending on its editable label text.
+        """
+        return next((index for index in range(self.objects.count())
+                     if self.objects.item(index).data(Qt.ItemDataRole.UserRole) == identity), -1)
+
+    def select_object(self, _row: int) -> None:
+        """
+        Synchronize explicit list selection with viewer handles while preserving field focus.
+        """
+        if self.updating:
+            return
+        self.seen_selection = self.editor.last_state.get("markup_selection")
+        self.editor.send({"action": "markup_select", "node": self.item["id"],
+                          "annotation": self.selected_id()})
+        self.refresh()
+
     def save(self, items: list[dict[str, Any]]) -> None:
         """
         Publish one validated node change through the existing pipeline JSON boundary.
@@ -171,7 +202,7 @@ class MarkupControls(QWidget):
         item = annotation(self.kind.currentData())
         items.append(item)
         self.save(items)
-        self.objects.setCurrentIndex(self.objects.findData(item["id"]))
+        self.objects.setCurrentRow(self.index_of(item["id"]))
         self.draw_object()
 
     def draw_object(self) -> None:
@@ -179,29 +210,29 @@ class MarkupControls(QWidget):
         Reposition/redraw the selected object using a live canvas gesture.
         """
         if (not self.editor.locked and not self.item["params"]["locked"]
-                and not self.item["bypass"] and self.objects.currentData()):
+                and not self.item["bypass"] and self.selected_id()):
             self.editor.send({"action": "markup_draw", "node": self.item["id"],
-                              "annotation": self.objects.currentData()})
+                              "annotation": self.selected_id()})
 
     def delete_object(self) -> None:
         """
         Remove only the selected annotation, retaining all other node state.
         """
         if not self.editor.locked:
-            self.save([item for item in self.items() if item["id"] != self.objects.currentData()])
+            self.save([item for item in self.items() if item["id"] != self.selected_id()])
 
     def shift_z_index(self, *, front: bool) -> None:
         """
         Match measurement layer controls across saved Markup nodes without reordering objects.
         """
-        if self.editor.locked or not self.objects.currentData():
+        if self.editor.locked or not self.selected_id():
             return
         self.z_index.interpretText()
         others = [
             item["z_index"] for nodes in software_tabs(self.editor.document).values() for node in nodes
             if node["type"] == "markup"
             for item in read_annotations(node["params"]["annotations"])
-            if (node["id"], item["id"]) != (self.item["id"], self.objects.currentData())
+            if (node["id"], item["id"]) != (self.item["id"], self.selected_id())
         ]
         if not others:
             return
@@ -221,7 +252,7 @@ class MarkupControls(QWidget):
             return
         items = self.items()
         for item in items:
-            if item["id"] == self.objects.currentData():
+            if item["id"] == self.selected_id():
                 item[key] = value
         self.save(items)
 
@@ -233,18 +264,30 @@ class MarkupControls(QWidget):
         items = self.items()
         options = [(f"{TITLES[KINDS.index(item['kind'])]}: {item['text'][:24]}"
                     + (" · not placed" if not item["points"] else ""), item["id"]) for item in items]
-        current_options = [(self.objects.itemText(i), self.objects.itemData(i))
+        current_options = [(self.objects.item(i).text(), self.objects.item(i).data(Qt.ItemDataRole.UserRole))
                            for i in range(self.objects.count())]
-        if options != current_options and not self.objects.view().isVisible():
-            identity = self.objects.currentData()
+        if options != current_options:
+            identity = self.selected_id()
             blocker = QSignalBlocker(self.objects)
             self.objects.clear()
             for title, identity_value in options:
-                self.objects.addItem(title, identity_value)
-            index = self.objects.findData(identity)
-            self.objects.setCurrentIndex(max(0, index))
+                entry = QListWidgetItem(title, self.objects)
+                entry.setData(Qt.ItemDataRole.UserRole, identity_value)
+            self.objects.setCurrentRow(max(0, self.index_of(identity)))
             blocker.unblock()
-        selected = next((item for item in items if item["id"] == self.objects.currentData()), None)
+        incoming = self.editor.last_state.get("markup_selection")
+        if (incoming != self.seen_selection and isinstance(incoming, dict)
+                and incoming.get("node") == self.item["id"]):
+            identity = incoming.get("annotation")
+            if isinstance(identity, str) and self.selected_id() != identity:
+                blocker = QSignalBlocker(self.objects)
+                self.objects.setCurrentRow(self.index_of(identity))
+                entry = self.objects.currentItem()
+                if entry is not None:
+                    self.objects.scrollToItem(entry)
+                blocker.unblock()
+        self.seen_selection = incoming if isinstance(incoming, dict) else None
+        selected = next((item for item in items if item["id"] == self.selected_id()), None)
         self.lock.setChecked(self.item["params"]["locked"])
         self.setEnabled(not self.editor.locked and not self.item["bypass"])
         self.fields.setEnabled(selected is not None)

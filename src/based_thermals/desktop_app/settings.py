@@ -349,6 +349,9 @@ class SettingsController(SessionState):
             "status_error": bool(self.pipeline_error or self.hardware.error),
             "pipeline": self.pipeline,
             "apple_acceleration": self.apple_capability,
+            "markup_selection": ({"node": self.markup_selection.node,
+                                  "annotation": self.markup_selection.identity}
+                                 if self.markup_selection is not None else None),
             "nvidia_acceleration": self.nvidia_capability,
             "model_download_status": self.api.MODEL_DOWNLOADS.status(),
             "pipeline_serial": self.pipeline_serial,

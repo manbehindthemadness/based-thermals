@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from ..markup.editing import MarkupSelection, handles
 from ..markup.model import read_annotations, serialize
 from ..markup.paint import draw_object, hit_test
 from .state import SessionState
@@ -57,6 +58,7 @@ class MarkupController(SessionState):
         if item is None:
             raise ValueError("Choose an existing Markup annotation")
         self.cancel_measurement_drawing()
+        self.markup_selection = None
         self.markup_gesture.begin(node["id"], item, "draw", self.markup_context(node["id"]))
         self.spot_drag.cancel()
         self.picker.consume_drag_events()
@@ -90,6 +92,9 @@ class MarkupController(SessionState):
             return
         node = self.markup_node(gesture.node)
         context = self.markup_context(gesture.node)
+        if gesture.matrix and any(entry["node"] == gesture.node and tuple(entry["matrix"]) == gesture.matrix
+                                  for entry in self.markup_frames):
+            context = gesture.matrix
         if (self.markup_locked(node) or node is None
                 or not any(item["id"] == gesture.identity
                            for item in read_annotations(node["params"]["annotations"]))):
@@ -118,6 +123,13 @@ class MarkupController(SessionState):
             if item["id"] == gesture.identity:
                 item["points"] = points
         node["params"]["annotations"] = serialize(items)
+        if gesture.mode == "drag" and self.markup_selection is not None:
+            self.markup_selection.index = gesture.handle
+            if gesture.handle >= 0 and gesture.kind in ("rectangle", "textbox", "ellipse"):
+                controls = handles({**gesture.item, "points": points})
+                self.markup_selection.index = int(np.argmin(np.linalg.norm(
+                    np.asarray(controls) - points[0], axis=1
+                )))
         self.renderer.set_pipeline(self.pipeline)
         gesture.cancel()
         self.persist_settings()
@@ -161,17 +173,29 @@ class MarkupController(SessionState):
         if not gesture.mode and inside and command["kind"] == "press" and command["button"] == "left":
             if self.measurement_drawing.kind is not None or self.spots.placing:
                 return False
-            for node_id, item, matrix in reversed(self.markup_objects()):
+            control = self.markup_handle_hit(position, bitmap)
+            selected = self.markup_selection
+            candidates = list(reversed(self.markup_objects()))
+            if control >= 0 and selected is not None:
+                candidates = [obj for obj in candidates
+                              if (obj[0], obj[1]["id"], obj[2]) ==
+                              (selected.node, selected.identity, selected.matrix)]
+            self.markup_selection = None
+            for node_id, item, matrix in candidates:
                 node = self.markup_node(node_id)
                 if self.markup_locked(node):
                     continue
                 assert node is not None
                 pixel = round(position[0] * (width - 1)), round(position[1] * (height - 1))
-                if hit_test((height, width), item, matrix, pixel):
+                if control >= 0 or hit_test((height, width), item, matrix, pixel):
                     gesture.begin(node["id"], item, "drag", matrix)
+                    gesture.handle = control
+                    self.markup_selection = MarkupSelection(node_id, item["id"], control, matrix)
+                    self.spot_drag.edit.cancel()
                     self.spot_drag.cancel()
                     self.picker.consume_drag_events()
                     self.picker.consume_clicks()
+                    self.view_panel.update(self.view_state())
                     break
         if not gesture.mode:
             return False

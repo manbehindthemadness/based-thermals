@@ -28,7 +28,7 @@ import json
 from copy import deepcopy
 from PySide6.QtCore import Qt
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QListWidget
 from based_thermals.view_window import ViewWindow
 from based_thermals.pipeline import validate_pipeline
 from based_thermals.markup.model import read_annotations
@@ -40,6 +40,7 @@ editor = window.pipeline_editor
 editor.insert("software", "markup", 1)
 item = editor.document["software"][1]
 controls = editor.markup_widgets[item["id"]]
+assert isinstance(controls.objects, QListWidget)
 controls.add.click()
 app.processEvents()
 assert messages[-1]["action"] == "markup_draw"
@@ -61,7 +62,7 @@ assert combo.view().isVisible()
 combo.hidePopup()
 controls.add.click()
 controls.z_index.setValue(8)
-controls.objects.setCurrentIndex(0)
+controls.objects.setCurrentRow(0)
 controls.bring_front.click()
 assert controls.z_index.value() == 9
 controls.send_back.click()
@@ -71,9 +72,9 @@ controls.z_index.lineEdit().selectAll()
 QTest.keyClicks(controls.z_index, "-12")
 controls.bring_front.click()
 assert controls.z_index.value() == 9
-controls.objects.setCurrentIndex(1)
+controls.objects.setCurrentRow(1)
 controls.z_index.setValue(1000)
-controls.objects.setCurrentIndex(0)
+controls.objects.setCurrentRow(0)
 controls.bring_front.click()
 assert controls.z_index.value() == 9 and "limit reached" in controls.layer_status.text()
 controls.lock.setChecked(True)
@@ -87,6 +88,17 @@ assert saved["software"][1]["params"]["locked"]
 editor.rebuild()
 controls = editor.markup_widgets[item["id"]]
 assert controls.text.toPlainText() == "Input stage" and controls.lock.isChecked()
+# Viewer selection updates the visible list without emitting another selection request.
+count = len(messages)
+second_id = values[1]["id"]
+editor.update_state({"pipeline": deepcopy(saved), "pipeline_serial": editor.edit_serial,
+                     "markup_selection": {"node": item["id"], "annotation": second_id}}, False)
+assert controls.selected_id() == second_id and len(messages) == count
+controls.objects.setCurrentRow(0)
+assert messages[-1] == {"action": "markup_select", "node": item["id"], "annotation": values[0]["id"]}
+editor.update_state({"pipeline": deepcopy(saved), "pipeline_serial": editor.edit_serial,
+                     "markup_selection": {"node": item["id"], "annotation": values[0]["id"]}}, False)
+assert controls.selected_id() == values[0]["id"]
 editor.update_state({"pipeline": deepcopy(saved), "pipeline_serial": editor.edit_serial}, True)
 assert not controls.isEnabled()
 window.close()

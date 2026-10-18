@@ -279,6 +279,8 @@ class ControlsController(SessionState):
                         self.hardware.error = ""
                 elif command.get("action") == "markup_draw":
                     self.begin_markup(command)
+                elif command.get("action") == "markup_select":
+                    self.select_markup(command)
                 elif command.get("action") == "environment_preset":
                     self.environment_presets.command(command)
                 elif command.get("action") == "setting":

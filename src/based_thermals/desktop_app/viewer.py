@@ -95,6 +95,8 @@ class ViewerController(SessionState):
                     else:
                         self.measurement_drawing_action(action)
                 elif action == "measurement_nudge":
+                    if self.markup_nudge(command.get("direction")):
+                        continue
                     if (
                         not self.spots_state()["locked"]
                         and self.measurement_drawing.kind is None

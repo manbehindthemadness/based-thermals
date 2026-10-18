@@ -10,6 +10,8 @@ from typing import Any
 
 import numpy as np
 
+from .editing import handles, move_handle
+
 
 @dataclass
 class MarkupGesture:
@@ -28,6 +30,7 @@ class MarkupGesture:
     cursor: list[float] | None = None
     swallow_release: bool = False
     released: bool = False
+    handle: int = -1
 
     def begin(self, node: str, item: dict[str, Any], mode: str,
               matrix: tuple[float, ...] = ()) -> None:
@@ -51,6 +54,7 @@ class MarkupGesture:
         self.pressed = self.cursor = None
         self.matrix = ()
         self.released = False
+        self.handle = -1
 
     def point(self, position: tuple[float, float], *, inside: bool = True) -> list[float] | None:
         """
@@ -79,7 +83,7 @@ class MarkupGesture:
         if kind == "press":
             self.released = False
             self.cursor = point
-            if self.mode == "draw" and (self.kind == "polygon" or self.kind == "text") or self.mode == "draw" or self.pressed is None:
+            if self.mode == "draw" or self.pressed is None:
                 self.pressed = point
         elif kind == "release" and self.mode == "draw":
             self.released = True
@@ -104,6 +108,9 @@ class MarkupGesture:
                 return deepcopy(self.item["points"])
             source = np.asarray(self.item["points"])
             delta = np.asarray(self.cursor) - self.pressed
+            if self.handle >= 0:
+                origin = np.asarray(handles(self.item)[self.handle])
+                return move_handle(self.item, self.handle, (origin + delta).tolist())
             delta = np.clip(delta, -source.min(axis=0), 1 - source.max(axis=0))
             return (source + delta).tolist()
         if self.kind == "polygon":

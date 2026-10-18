@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from ..maintenance.export import SupportExport
     from ..maintenance.logging import SupportLogging
     from ..maintenance_panel import MaintenancePanel
+    from ..markup.editing import MarkupSelection
     from ..markup.interaction import MarkupGesture
     from ..measurements.drawing import MeasurementDrawing
     from .environment import EnvironmentPresets
@@ -80,6 +81,7 @@ class SessionState:
     measurement_drawing: MeasurementDrawing = field(init=False)
     markup_gesture: MarkupGesture = field(init=False)
     markup_frames: list[dict[str, Any]] = field(default_factory=list)
+    markup_selection: MarkupSelection | None = None
     maintenance_panel: MaintenancePanel = field(init=False)
     maintenance_paths: MaintenancePaths = field(init=False)
     maintenance_plan: MaintenancePlan | None = None
