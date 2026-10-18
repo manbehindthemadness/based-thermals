@@ -54,6 +54,7 @@ class PipelineProcessor:
         self.preview_active = False
         self.last_preview_errors = {}
         self.defer_markup = False
+        self.markup_values: dict[str, Any] = {}
         self.last_markup: list[dict[str, Any]] = []
 
     def close(self) -> None:
@@ -86,10 +87,15 @@ class PipelineProcessor:
         """
         self.last_previews = {}
         self.last_markup = []
+        from ..markup.variables import pipeline_value, references
+
         self.last_preview_timings = {}
         self.last_preview_errors = {}
         frame = decode_frame(frame)
         document = validate_pipeline(document, hardware_profile=frame.profile.id)
+        markup_values = {**self.markup_values,
+                         **{key: pipeline_value(document, key) for key in references(document)
+                            if key.startswith("Pipeline/")}}
         viewer_dependencies = execution_dependencies(document)
         roots = preview_roots(document) if self.preview_active or self.collect_previews else ()
         retained_dependencies = execution_dependencies(document, roots=("A", *roots))
@@ -135,6 +141,7 @@ class PipelineProcessor:
                         branch = {"hardware": document["hardware"], "software": tabs[tab]}
                         inputs = {t: outputs[t][0] for t in required}
                         self.branches[tab].collect_previews = self.collect_previews
+                        self.branches[tab].markup_values = markup_values
                         self.branches[tab].track_coverage = track_coverage
                         self.branches[tab].display_size = unrotated_target if tab == "A" else None
                         self.branches[tab].display_interpolation = interpolation

@@ -27,7 +27,7 @@ def handles(item: dict[str, Any]) -> list[list[float]]:
     points = item["points"]
     if not points:
         return []
-    if item["kind"] in ("rectangle", "textbox", "ellipse"):
+    if item["kind"] in ("rectangle", "textbox", "ellipse", "table"):
         low, high = np.min(points, axis=0), np.max(points, axis=0)
         return [low.tolist(), [float(high[0]), float(low[1])], high.tolist(),
                 [float(low[0]), float(high[1])]]
@@ -42,7 +42,7 @@ def move_handle(item: dict[str, Any], index: int, point: list[float]) -> list[li
     if not 0 <= index < len(controls):
         raise ValueError("Markup control point no longer exists")
     moved = np.clip(point, 0, 1).tolist()
-    if item["kind"] in ("rectangle", "textbox", "ellipse"):
+    if item["kind"] in ("rectangle", "textbox", "ellipse", "table"):
         return [moved, controls[(index + 2) % 4]]
     controls[index] = moved
     return controls

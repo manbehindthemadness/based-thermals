@@ -72,6 +72,7 @@ class BranchProcessor:
         self.last_preview_errors = {}
         self.custom = CustomProcessor(self.apple_available, self.nvidia_available)
         self.input_labels: dict[str, list[DisplayLabel]] = {}
+        self.markup_values: dict[str, Any] = {}
         self.input_coverage: dict[str, np.ndarray | None] = {}
         self.output_coverage: np.ndarray | None = None
         self.track_coverage = True
@@ -256,7 +257,7 @@ class BranchProcessor:
             elif kind == "markup":
                 from ..markup.labels import node_labels
 
-                self.custom.labels.extend(node_labels(item))
+                self.custom.labels.extend(node_labels(item, self.markup_values))
             elif kind == "invert":
                 image = invert_colors(image)
             elif kind == "contrast":

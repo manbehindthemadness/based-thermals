@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 
 from ..markup.editing import MarkupSelection, handles
+from ..markup.expressions import render_item
 from ..markup.model import read_annotations, serialize
 from ..markup.paint import draw_object, hit_test
 from .state import SessionState
@@ -79,6 +80,7 @@ class MarkupController(SessionState):
         for entry in self.markup_frames:
             item = definitions.get(entry["node"], {}).get(entry["annotation"])
             if item is not None:
+                item = render_item(item, self.markup_live)
                 objects.append((entry["node"], item, tuple(entry["matrix"])))
         objects.sort(key=lambda obj: obj[1]["z_index"])
         return objects
@@ -125,7 +127,7 @@ class MarkupController(SessionState):
         node["params"]["annotations"] = serialize(items)
         if gesture.mode == "drag" and self.markup_selection is not None:
             self.markup_selection.index = gesture.handle
-            if gesture.handle >= 0 and gesture.kind in ("rectangle", "textbox", "ellipse"):
+            if gesture.handle >= 0 and gesture.kind in ("rectangle", "textbox", "ellipse", "table"):
                 controls = handles({**gesture.item, "points": points})
                 self.markup_selection.index = int(np.argmin(np.linalg.norm(
                     np.asarray(controls) - points[0], axis=1
@@ -228,7 +230,7 @@ class MarkupController(SessionState):
                 node = self.markup_node(gesture.node)
                 definition = next((item for item in read_annotations(node["params"]["annotations"])
                                    if item["id"] == gesture.identity), gesture.item) if node else gesture.item
-                preview = {**definition, "points": gesture.geometry(preview=True)}
+                preview = render_item({**definition, "points": gesture.geometry(preview=True)}, self.markup_live)
             except ValueError:
                 pass
         if preview is not None and gesture.matrix:

@@ -149,14 +149,14 @@ pipelines retain their explicitly configured pass counts.
 |                                                   | Combine: another tab, camera preview or raw thermal                       |
 |                                                   | Output → viewer (mandatory, last, tab A only)                             |
 |                                                   | Pipeline preview (repeatable, active only when expanded)                  |
-|                                                   | Markup: labels, text boxes, shapes, lines and arrows                      |
+|                                                   | Markup: labels, text boxes, shapes, lines, arrows and live tables          |
 |                                                   | Edge features: selected connected edges, overlays and masks               |
 |                                                   | Contour regions: selected shapes, outlines, fills and masks               |
 
 ### Markup annotations
 
 Add **Markup** to a software branch to annotate its displayed image. Choose Label,
-Text box, Rectangle, Ellipse, Polygon, Line or Arrow, then **Add and draw**. Click
+Text box, Rectangle, Ellipse, Polygon, Line, Arrow or Table, then **Add and draw**. Click
 to place a label, drag to draw a box/shape/line, or click polygon corners. Use the
 viewer's **Finish** button or Enter to commit; Esc cancels and Backspace undoes.
 **Draw on image** redraws the selected object. Once placed, drag an unlocked
@@ -198,8 +198,69 @@ Place Markup near Output to annotate the final composition directly.
 The native viewer composites current styles and temporary previews over the
 worker result, without restarting expensive image processing on every drag.
 Cached local raster masks share a 64 MiB budget and a 256-entry limit. Each node
-supports up to 128 objects, 64 corners per polygon and 1,024 characters per label,
+supports up to 128 objects, 64 corners per polygon and 8,192 characters per label,
 within 64 KiB of annotation JSON. Text uses the existing OpenCV font.
+
+#### Variables, formulas and tables
+
+The Text editor spans the element list's width. Right-click it and choose
+**Add variable…** to search system readouts, named measurements and pipeline JSON
+settings. The picker shows current snapshot values and units. References use
+readable names; inserted names save a binding to the measurement number or
+pipeline node identity and JSON path. Renaming a measurement or reordering/moving
+a pipeline node does not redirect an existing reference. Deleting a referenced
+node or measurement makes its value unavailable.
+
+**Add formula…** provides variable lookup, a result preview and numeric formatting.
+You can also edit expressions directly in the text:
+
+```text
+Maximum: {{ [Temperature.Maximum] :.1f }} {{ [Temperature.Unit] }}
+Range: {{ [Temperature.Maximum] - [Temperature.Minimum] :.1f }}
+Frames: {{ [Capture.Frames] :d }}
+Minutes: {{ [Session.Elapsed] / 60 :.1f }}
+```
+
+Formulas support numbers, parentheses, `+ - * / // % **`, and `abs`, `min`, `max`,
+`round`, `sqrt`, `floor`, `ceil`. Formats include `.1f`, `.2f`, `d`, `.3g`, `.1e`
+and `.0%`. Missing/invalid readings display `--`; invalid arithmetic or unsupported
+syntax displays `#ERR` in that readout. Formulas interpret arithmetic only, with
+bounded size/depth/exponents; they cannot execute Python or camera commands.
+Up to 128 readouts/bindings fit in an annotation, subject to the text/JSON budgets.
+
+| Readout group | Available values |
+| --- | --- |
+| Temperatures | Frame minimum/maximum/average/center, display unit and validity |
+| Measurements | Named area's minimum/maximum/average and native pixel count; validity/status |
+| Frame rates/counters | Received frames/FPS, camera nominal FPS, painted frames/FPS |
+| Timings | Last pipeline duration, native viewer's 10-frame average draw and capture-to-paint duration |
+| Timers | Session elapsed seconds or HH:MM:SS, local clock/date, recording elapsed seconds and frame count |
+| Pipeline | Hardware/software scalar JSON parameters, bypass state and bounded Custom JSON configuration values |
+
+Temperature/measurement readouts use the selected display unit; radiometry and
+stored temperatures remain Celsius. Pipeline JSON values stay in their stored
+units, shown in the picker where defined (including Celsius temperature bounds).
+Disabled/excluded measurements, unregistered spatial readings and invalid frames
+have no available area readout. Measurement reductions share the existing explicit
+per-frame cache and never modify samples or graph history.
+
+Received FPS counts complete frames consumed by the desktop, not skipped USB
+frames or sensor exposure. Painted FPS counts actual published-frame paints.
+Native paint telemetry updates at most twice per second; draw/total values retain
+the viewer counters' meanings. Timers and frame counters reset with a new session;
+recording time is zero when recording is inactive. Native viewer readouts use the
+current snapshot, while pipeline previews use the most recent submitted snapshot.
+Standalone processors can resolve pipeline settings; desktop-only runtime values
+are unavailable without a supplied snapshot.
+
+Choose **Table** when adding an element, or right-click Text → **Edit as table…**.
+The cell editor supports 1–32 rows and 1–16 columns. Right-click a cell to add
+variables or formulas; accepting saves the entire table, while Cancel leaves it
+unchanged. Tab-separated columns and newline-separated rows also remain editable
+in Text. Draw the table bounds on the viewer; its grid and text use the same
+border/text/fill colors, opacity and Z controls. Text stays inside its cell and
+clips when bounds are too small. Bounds handles, dragging, nudging and Lock work
+like other annotations. Tables are display-only and require no spreadsheet runtime.
 
 ### Transform
 

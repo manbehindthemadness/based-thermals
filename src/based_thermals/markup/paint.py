@@ -13,9 +13,9 @@ import cv2
 import numpy as np
 
 from ..custom_nodes.labels import DisplayLabel
-from ..desktop_app.overlays import draw_contrasting_overlay
-from ..measurements.appearance import blend_color
+from .composite import blend, contrast
 from .labels import MarkupLabel
+from .tables import paint_table
 
 
 @dataclass(frozen=True)
@@ -82,7 +82,7 @@ def rasterize(shape: tuple[int, int], item: dict[str, Any], matrix: tuple[float,
     height, width = shape
     kind = item["kind"]
     points = np.asarray(item["points"], np.float64)
-    if kind in ("rectangle", "textbox", "ellipse"):
+    if kind in ("rectangle", "textbox", "ellipse", "table"):
         low, high = points.min(axis=0), points.max(axis=0)
         if kind == "ellipse":
             angles = np.linspace(0, 2 * np.pi, 65)[:-1]
@@ -119,7 +119,9 @@ def rasterize(shape: tuple[int, int], item: dict[str, Any], matrix: tuple[float,
     else:
         cv2.fillPoly(filled, [local], 255, cv2.LINE_AA)
         cv2.polylines(border, [local], True, 255, item["width"], cv2.LINE_AA)
-    if item["text"]:
+    if kind == "table":
+        paint_table(border, text, item, matrix, shape, (x0, y0))
+    elif item["text"]:
         origin = (int(left) - x0 + 6, int(top) - y0 + item["font_size"] + 4)
         for index, line in enumerate(lines):
             cv2.putText(text, line, (origin[0], origin[1] + index * line_height),
@@ -140,19 +142,16 @@ def draw_object(image: np.ndarray, item: dict[str, Any], matrix: tuple[float, ..
         return
     view = image[masks.y:masks.y + masks.border.shape[0], masks.x:masks.x + masks.border.shape[1]]
     if item["fill"]:
-        blend_color(view, masks.fill, item["fill_color"], item["fill_opacity"], copy=False)
+        blend(view, masks.fill, item["fill_color"], item["fill_opacity"])
     for role, mask in (("border", masks.border), ("text", masks.text)):
         alpha = item[f"{role}_opacity"]
         if alpha == 0 or not np.any(mask):
             continue
         color = item[f"{role}_color"]
         if color == "dynamic":
-            empty = np.zeros_like(mask)
-            target = draw_contrasting_overlay(view, mask if role == "border" else empty,
-                                              mask if role == "text" else empty)
-            cv2.addWeighted(view, 1 - alpha, target, alpha, 0, dst=view)
+            contrast(view, mask, alpha, text=role == "text")
         else:
-            blend_color(view, mask, color, alpha, copy=False)
+            blend(view, mask, color, alpha)
 
 
 def draw_labels(image: np.ndarray, labels: list[DisplayLabel]) -> np.ndarray:

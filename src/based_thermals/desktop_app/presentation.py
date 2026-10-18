@@ -118,6 +118,7 @@ class PresentationController(SessionState):
         """
         assert self.pipeline_worker is not None
         assert self.frame is not None
+        self.spots.display_cache.begin_frame()
         self.pipeline_worker.enable_previews(self.view_panel.is_open)
         self.renderer.camera_preview = self.hardware.preview_active
         self.renderer.camera_color = "palette" in self.hardware.enabled
@@ -129,6 +130,8 @@ class PresentationController(SessionState):
             self.frame, update_measurements=self.fresh_frame, image_processing=False
         )
         image_frame = self.renderer.current_frame
+        if hasattr(self.pipeline_worker, "set_readouts"):
+            self.pipeline_worker.set_readouts(self.markup_live)
         self.display_captured_at = (
             self.frame_captured_at
             if self.rendered.measurements_valid or not self.camera_profile.radiometry else None
@@ -160,7 +163,6 @@ class PresentationController(SessionState):
                 self.notify(f"Image pipeline: {self.pipeline_error}")
             if image is not None:
                 self.markup_frames = result_metadata.get("markup", [])
-                image = self.draw_markup(image)
                 self.display_captured_at = result_metadata.get("captured_at")
                 mapping_valid = self.rendered.measurement_mapping_valid
                 if result_metadata.get("uses_visible"):
@@ -193,6 +195,8 @@ class PresentationController(SessionState):
             )
             self.renderer.measurement_status = self.rendered.measurement_status
             self.renderer.request_measurement_restart()
+        self.update_markup_values()
+        self.rendered = self.api.replace(self.rendered, image=self.draw_markup(self.rendered.image))
         self.diagnostics.measurements(self.rendered.measurement_status)
         self.diagnostics.stage("calibration_and_layout")
         if (
@@ -302,7 +306,6 @@ class PresentationController(SessionState):
             locked=self.spots_state()["locked"] or not self.rendered.measurement_mapping_valid,
         )
         pointer_toolbar_height = self.layout.height
-        self.spots.display_cache.begin_frame()
         pointer_image_height = self.rendered.image.shape[0]
         if self.graph_layout:
             pointer_toolbar_height = round(

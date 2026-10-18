@@ -29,7 +29,7 @@ def main() -> None:
         parser.error("--frames must be from 1 to 10000")
     yy, xx = np.indices((576, 768))
     source = np.asarray(cv2.applyColorMap(((xx + yy) % 256).astype(np.uint8), cv2.COLORMAP_INFERNO))
-    for count in (1, 10, 128):
+    for count in (1, 10, 128, 0):
         items = []
         for index in range(count):
             kind = KINDS[index % len(KINDS)]
@@ -40,6 +40,12 @@ def main() -> None:
                               else [[x, y], [x + .1, y + .04]])
             item["text"] = "Stage" if kind in ("text", "textbox") else ""
             items.append(item)
+        if count == 0:
+            table = annotation("table")
+            table.update(points=[[.05, .05], [.8, .8]],
+                         text="Metric\tValue\nPeak\t{{ [Temperature.Maximum] :.1f }}\n"
+                              "Frames\t{{ [Capture.Frames] :d }}\nTime\t{{ [Session.Elapsed] :.1f }}")
+            items.append(table)
         markup = node("software", "markup", annotations=serialize(items))
         document = default_pipeline()
         document["software"].insert(1, markup)
@@ -50,14 +56,18 @@ def main() -> None:
             {"node": markup["id"], "annotation": item["id"], "matrix": list(IDENTITY)} for item in items
         ]
         controller.markup_gesture = MarkupGesture()
+        controller.markup_live = {}
         timings = []
         result = source
-        for _ in range(args.frames + 1):
+        for frame_index in range(args.frames + 1):
+            controller.markup_live = {"Temperature.Maximum": 25 + frame_index / 10,
+                                      "Capture.Frames": frame_index, "Session.Elapsed": frame_index / 25}
             started = perf_counter()
             result = controller.draw_markup(source)
             timings.append((perf_counter() - started) * 1000)
         median, p95 = float(np.median(timings[1:])), float(np.percentile(timings[1:], 95))
-        print(f"{count:3d} objects: cold {timings[0]:.3f} ms; median {median:.3f} ms; p95 {p95:.3f} ms")
+        label = f"{count:3d} objects" if count else "Live table"
+        print(f"{label}: cold {timings[0]:.3f} ms; median {median:.3f} ms; p95 {p95:.3f} ms")
         if args.output:
             args.output.mkdir(parents=True, exist_ok=True)
             if not cv2.imwrite(str(args.output / f"markup-{count}.png"), result):

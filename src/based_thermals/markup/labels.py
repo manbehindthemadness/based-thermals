@@ -10,6 +10,7 @@ from typing import Any
 import numpy as np
 
 from ..custom_nodes.labels import DisplayLabel
+from .expressions import render_item
 from .model import read_annotations
 
 IDENTITY = (1., 0., 0., 0., 1., 0., 0., 0., 1.)
@@ -35,12 +36,13 @@ class MarkupLabel(DisplayLabel):
                        matrix=tuple(float(v) for v in combined.ravel()))
 
 
-def node_labels(item: dict[str, Any]) -> list[DisplayLabel]:
+def node_labels(item: dict[str, Any], values: dict[str, Any] | None = None) -> list[DisplayLabel]:
     """
     Include an invisible placement frame even when the node has no placed objects yet.
     """
     labels: list[DisplayLabel] = [MarkupLabel("", .5, .5, item["id"])]
     for definition in read_annotations(item["params"]["annotations"]):
+        definition = render_item(definition, values or {})
         if definition["points"]:
             points = np.asarray(definition["points"])
             center = points.mean(axis=0)

@@ -34,6 +34,7 @@ class PipelineWorker:
         self.preview_enabled = False
         self.last_preview_at = 0.0
         self.closed = False
+        self.readouts: dict[str, Any] = {}
         self.processor = PipelineProcessor(apple_available=apple_available)
         self.processor.defer_markup = True
         self.thread = Thread(target=self._run, name="image-pipeline", daemon=True)
@@ -72,6 +73,13 @@ class PipelineWorker:
         """
         with self.condition:
             return self.result if self.result is not None and self.result[0] == revision else None
+
+    def set_readouts(self, values: dict[str, Any]) -> None:
+        """
+        Publish a small immutable-by-convention snapshot for the next preview execution.
+        """
+        with self.condition:
+            self.readouts = dict(values)
 
     def latest_with_metadata(self, revision: int) -> tuple[Any, dict[str, Any]]:
         """
@@ -144,6 +152,7 @@ class PipelineWorker:
                     or self.preview_result[0] != revision
                 )
                 self.processor.collect_previews = make_preview
+                self.processor.markup_values = self.readouts
                 self.processor.preview_active = self.preview_enabled
             started = perf_counter()
             try:

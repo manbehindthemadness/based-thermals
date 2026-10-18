@@ -19,7 +19,6 @@ from PySide6.QtWidgets import (
     QListWidget,
     QListWidgetItem,
     QMessageBox,
-    QPlainTextEdit,
     QPushButton,
     QSpinBox,
     QVBoxLayout,
@@ -27,8 +26,10 @@ from PySide6.QtWidgets import (
 )
 
 from ..markup.model import KINDS, TITLES, annotation, read_annotations, serialize
+from ..markup.variables import catalog
 from ..pipeline import software_tabs
 from .custom_choices import ColorPicker
+from .markup_text import ReadoutText, TableDialog
 
 if TYPE_CHECKING:
     from .editor import PipelineEditor
@@ -84,6 +85,7 @@ class MarkupControls(QWidget):
         layout.addLayout(actions)
         self.fields = QWidget()
         form = QFormLayout(self.fields)
+        form.setContentsMargins(0, 0, 0, 0)
         self.z_index = QSpinBox()
         self.z_index.setRange(-1000, 1000)
         self.z_index.setKeyboardTracking(False)
@@ -101,11 +103,17 @@ class MarkupControls(QWidget):
         self.layer_status = QLabel()
         self.layer_status.setWordWrap(True)
         form.addRow(self.layer_status)
-        self.text = QPlainTextEdit()
+        self.text = ReadoutText(self.variable_catalog, self.variable_bindings, self.save_bindings,
+                                self.edit_table)
         self.text.setAccessibleName("Markup text")
-        self.text.setMaximumHeight(76)
-        self.text.textChanged.connect(lambda: self.change("text", self.text.toPlainText()[:1024]))
-        form.addRow("Text", self.text)
+        self.text.setMinimumHeight(110)
+        self.text.setMaximumHeight(180)
+        self.text.setToolTip("Right-click to add a variable, formula or table. Use {{ [Variable] :.1f }} for a formatted readout.")
+        self.text.textChanged.connect(lambda: self.change("text", self.text.toPlainText()[:8192]))
+        text_hint = QLabel("Text · right-click to add variables, formulas or tables")
+        text_hint.setWordWrap(True)
+        form.addRow(text_hint)
+        form.addRow(self.text)
         self.colors: dict[str, ColorPicker] = {}
         self.numbers: dict[str, QSpinBox | QDoubleSpinBox] = {}
         for role in ("border", "text", "fill"):
@@ -168,7 +176,7 @@ class MarkupControls(QWidget):
                           "annotation": self.selected_id()})
         self.refresh()
 
-    def save(self, items: list[dict[str, Any]]) -> None:
+    def save(self, items: list[dict[str, Any]]) -> bool:
         """
         Publish one validated node change through the existing pipeline JSON boundary.
         """
@@ -176,10 +184,58 @@ class MarkupControls(QWidget):
             encoded = serialize(items)
         except ValueError as exc:
             QMessageBox.warning(self, "Markup", str(exc))
-            return
+            return False
         self.item["params"]["annotations"] = encoded
         self.editor.publish()
         self.refresh()
+        return True
+
+    def variable_catalog(self) -> list[dict[str, Any]]:
+        """
+        Discover current JSON settings and the latest read-only values published by the viewer.
+        """
+        state = self.editor.last_state
+        return catalog(self.editor.document, state.get("markup_live", {}), state.get("markup_measurements", []))
+
+    def variable_bindings(self) -> dict[str, str]:
+        """
+        Retrieve only the selected annotation's saved human-name to stable-reference mapping.
+        """
+        item = next((item for item in self.items() if item["id"] == self.selected_id()), None)
+        return {str(key): str(value) for key, value in item["bindings"].items()} if item else {}
+
+    def save_bindings(self, bindings: dict[str, str]) -> bool:
+        """
+        Publish variable bindings before inserting text, honoring the existing pipeline locks.
+        """
+        if self.editor.locked:
+            return False
+        items = self.items()
+        selected = next((item for item in items if item["id"] == self.selected_id()), None)
+        if selected is None:
+            return False
+        selected["bindings"] = bindings
+        return self.save(items)
+
+    def edit_table(self) -> None:
+        """
+        Edit cells with variable/formula lookup and preserve all geometry and style on cancellation.
+        """
+        if self.editor.locked:
+            return
+        items = self.items()
+        selected = next((item for item in items if item["id"] == self.selected_id()), None)
+        if selected is None:
+            return
+        dialog = TableDialog(self.text.toPlainText(), self.variable_catalog, self.variable_bindings(), self)
+        if dialog.exec() != dialog.DialogCode.Accepted:
+            return
+        selected.update(kind="table", text=dialog.text(), bindings=dialog.bindings)
+        if len(selected["points"]) == 1:
+            x, y = selected["points"][0]
+            selected["points"].append([min(1., x + .5), min(1., y + .25)])
+        if self.save(items):
+            self.text.setPlainText(selected["text"])
 
     def set_locked(self, enabled: bool) -> None:
         """
@@ -201,7 +257,8 @@ class MarkupControls(QWidget):
             return
         item = annotation(self.kind.currentData())
         items.append(item)
-        self.save(items)
+        if not self.save(items):
+            return
         self.objects.setCurrentRow(self.index_of(item["id"]))
         self.draw_object()
 

@@ -11,9 +11,10 @@ from typing import Any
 from uuid import uuid4
 
 from ..custom_nodes.colors import color_value
+from .tables import cells
 
-KINDS = ("text", "textbox", "rectangle", "ellipse", "polygon", "line", "arrow")
-TITLES = ("Label", "Text box", "Rectangle", "Ellipse", "Polygon", "Line", "Arrow")
+KINDS = ("text", "textbox", "rectangle", "ellipse", "polygon", "line", "arrow", "table")
+TITLES = ("Label", "Text box", "Rectangle", "Ellipse", "Polygon", "Line", "Arrow", "Table")
 
 
 def annotation(kind: str) -> dict[str, Any]:
@@ -24,9 +25,11 @@ def annotation(kind: str) -> dict[str, Any]:
         raise ValueError("Choose a Markup drawing tool")
     return {
         "id": uuid4().hex, "kind": kind, "points": [], "z_index": 0,
-        "text": "Label" if kind == "text" else "Text box" if kind == "textbox" else "",
+        "text": ("Label" if kind == "text" else "Text box" if kind == "textbox"
+                 else "Name\tValue\nItem\t--" if kind == "table" else ""),
+        "bindings": {},
         "border_color": "dynamic", "border_opacity": 0.0 if kind == "text" else 1.0, "width": 1,
-        "fill": kind == "textbox", "fill_color": "#000000", "fill_opacity": 0.4,
+        "fill": kind in ("textbox", "table"), "fill_color": "#000000", "fill_opacity": 0.4,
         "text_color": "dynamic", "text_opacity": 1.0, "font_size": 16,
     }
 
@@ -51,9 +54,17 @@ def read_annotations(text: str) -> tuple[dict[str, Any], ...]:
         raise ValueError("A Markup node supports up to 128 annotations")
     identities = set()
     for item in items:
-        if not isinstance(item, dict) or set(item) not in (_FIELDS, _FIELDS - {"z_index"}):
+        if (not isinstance(item, dict) or not _FIELDS - {"z_index", "bindings"} <= set(item)
+                or not set(item) <= _FIELDS):
             raise ValueError("Unknown or missing Markup annotation field")
         item.setdefault("z_index", 0)
+        bindings = item.setdefault("bindings", {})
+        if (not isinstance(bindings, dict) or len(bindings) > 128
+                or any(not isinstance(key, str) or not 1 <= len(key) <= 160
+                       or any(c in key for c in "[]\n")
+                       or not isinstance(value, str) or not 1 <= len(value) <= 512
+                       for key, value in bindings.items())):
+            raise ValueError("Invalid Markup variable bindings")
         if type(item["z_index"]) is not int or not -1000 <= item["z_index"] <= 1000:
             raise ValueError("Markup Z index must be an integer from -1000 to 1000")
         identity = item["id"]
@@ -61,8 +72,12 @@ def read_annotations(text: str) -> tuple[dict[str, Any], ...]:
                 or identity in identities):
             raise ValueError("Markup annotation identities must be unique")
         identities.add(identity)
-        if item["kind"] not in KINDS or not isinstance(item["text"], str) or len(item["text"]) > 1024:
+        if item["kind"] not in KINDS or not isinstance(item["text"], str) or len(item["text"]) > 8192:
             raise ValueError("Invalid Markup kind or label text")
+        if item["text"].count("{{") > 128:
+            raise ValueError("Markup text supports up to 128 readouts")
+        if item["kind"] == "table":
+            cells(item["text"])
         if type(item["fill"]) is not bool:
             raise ValueError("Markup fill must be a boolean")
         for key in ("border_color", "fill_color", "text_color"):

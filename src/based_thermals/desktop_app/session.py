@@ -15,6 +15,7 @@ from .environment import EnvironmentPresets
 from .maintenance import MaintenanceController
 from .markup import MarkupController
 from .markup_edit import MarkupEditController
+from .markup_values import MarkupValuesController
 from .measurement_drawing import MeasurementDrawingController
 from .presentation import PresentationController
 from .settings import SettingsController
@@ -31,6 +32,7 @@ class DesktopSession(
     MeasurementDrawingController,
     MarkupController,
     MarkupEditController,
+    MarkupValuesController,
     MaintenanceController,
 ):
     """
@@ -42,6 +44,7 @@ class DesktopSession(
         Initialize dependencies and restore validated session preferences.
         """
         super().__init__(api=api)
+        self.markup_runtime.started = self.api.time.monotonic()
         self.api.EXPORT_JOBS.begin()
         self.api.MODEL_DOWNLOADS.begin()
         self.maintenance_panel = MaintenancePanel()

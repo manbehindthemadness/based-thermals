@@ -58,7 +58,7 @@ def test_objects_round_trip_and_draw_without_source_mutation(kind: str) -> None:
 @pytest.mark.parametrize("change", [
     {"points": [[float("nan"), .2], [.5, .5]]}, {"points": [[-.1, .2], [.5, .5]]},
     {"border_opacity": 1.1}, {"fill": 1}, {"width": True}, {"font_size": 100},
-    {"text": "x" * 1025}, {"border_color": "red"}, {"kind": "python"},
+    {"text": "x" * 8193}, {"border_color": "red"}, {"kind": "python"},
     {"unexpected": "field"}, {"points": [[.2, .2]]},
 ])
 def test_invalid_annotations_are_rejected(change: dict[str, Any]) -> None:

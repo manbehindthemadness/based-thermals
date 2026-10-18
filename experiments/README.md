@@ -38,7 +38,9 @@ For display-only Markup performance and PNG previews without camera access:
 ```
 
 This measures the actual main-process compositor on a synthetic 768×576 frame
-with 1, 10 and 128 annotations, reporting cold, warm median and p95 milliseconds.
+with 1, 10 and 128 annotations plus a large live table with changing readouts,
+reporting cold, warm median and p95 milliseconds. Optional PNG output includes
+`markup-0.png` for the live table.
 It uses existing dependencies and never reads user preferences or opens USB.
 
 ## Thermal Surface renderer (no external resources)

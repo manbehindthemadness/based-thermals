@@ -26,6 +26,7 @@ class ViewerController(SessionState):
         self.reconcile_markup()
         return {
             "rotation": self.renderer.rotation,
+            "readout_metrics": bool(self.markup_runtime.metrics or self.view_panel.is_open),
             "viewer_layout": self.viewer_layout,
             "measurement_drawing": (self.markup_gesture.state()
                                     if self.markup_gesture.mode == "draw"
@@ -111,6 +112,8 @@ class ViewerController(SessionState):
                             "down",
                         ):
                             self.spot_drag.edit.pending_nudges.append(direction)
+                elif action == "viewer_metrics":
+                    self.markup_metrics(command)
                 elif isinstance(action, str) and action in keys:
                     self.viewer_keys.append(ord(keys[action]))
                 elif action == "key":

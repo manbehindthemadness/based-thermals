@@ -7,6 +7,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
+from ..markup.runtime import ReadoutRuntime
+
 if TYPE_CHECKING:
     import argparse
 
@@ -82,6 +84,8 @@ class SessionState:
     markup_gesture: MarkupGesture = field(init=False)
     markup_frames: list[dict[str, Any]] = field(default_factory=list)
     markup_selection: MarkupSelection | None = None
+    markup_runtime: ReadoutRuntime = field(default_factory=ReadoutRuntime)
+    markup_live: dict[str, Any] = field(default_factory=dict)
     maintenance_panel: MaintenancePanel = field(init=False)
     maintenance_paths: MaintenancePaths = field(init=False)
     maintenance_plan: MaintenancePlan | None = None

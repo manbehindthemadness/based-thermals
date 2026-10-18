@@ -69,6 +69,9 @@ class ViewerWindow(QMainWindow):
         self._frame_paint_pending = False
         self._draw_samples: deque[float | None] = deque(maxlen=10)
         self._total_samples: deque[float | None] = deque(maxlen=10)
+        self._paint_times: deque[float] = deque(maxlen=25)
+        self._paint_count = 0
+        self._metrics_at = monotonic()
         self._status_text = "Waiting for camera…"
         self.canvas = ImageCanvas(send, self._viewport_painted)
         self.setCentralWidget(self.canvas)
@@ -118,12 +121,20 @@ class ViewerWindow(QMainWindow):
             )
             self._viewport_draw_ms = averaged_timing(self._draw_samples, draw_ms)
             now = monotonic()
+            self._paint_times.append(now)
+            self._paint_count += 1
             total_ms = (
                 (now - self._captured_at) * 1000
                 if self._captured_at is not None and self._captured_at <= now else None
             )
             self._capture_to_paint_ms = averaged_timing(self._total_samples, total_ms)
             self._frame_paint_pending = False
+            if self._viewer_state.get("readout_metrics") and now - self._metrics_at >= .5:
+                duration = self._paint_times[-1] - self._paint_times[0]
+                fps = (len(self._paint_times) - 1) / duration if duration > 0 else None
+                self.send({"action": "viewer_metrics", "fps": fps, "frames": self._paint_count,
+                           "draw_ms": self._viewport_draw_ms, "total_ms": self._capture_to_paint_ms})
+                self._metrics_at = now
         self._update_status()
 
     def _update_status(self) -> None:

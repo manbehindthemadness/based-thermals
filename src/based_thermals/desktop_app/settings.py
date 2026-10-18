@@ -349,6 +349,8 @@ class SettingsController(SessionState):
             "status_error": bool(self.pipeline_error or self.hardware.error),
             "pipeline": self.pipeline,
             "apple_acceleration": self.apple_capability,
+            "markup_live": self.markup_live,
+            "markup_measurements": self.spots.state(),
             "markup_selection": ({"node": self.markup_selection.node,
                                   "annotation": self.markup_selection.identity}
                                  if self.markup_selection is not None else None),
