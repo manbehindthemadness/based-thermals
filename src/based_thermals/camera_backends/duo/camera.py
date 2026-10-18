@@ -85,6 +85,9 @@ class FrameAssembler:
         self.frame_size = frame_size
         self._fid: int | None = None
         self._data = bytearray()
+        self._discarding = False
+        # Allow legacy padding, but never retain an unbounded stream with missing boundaries.
+        self._buffer_limit = max(frame_size, YUY2_FRAME_BYTES) * 2
         self.last_rejected_size = None
         self.last_rejected_prefix = None
         self.rejected_frame_observer: Callable[[bytearray], None] | None = None
@@ -97,6 +100,9 @@ class FrameAssembler:
         }
 
     def feed(self, packet: bytes) -> bytes | None:
+        """
+        Reassemble bounded payloads and discard an oversized frame until its next boundary.
+        """
         if len(packet) < 2:
             self.rejected["invalid_header"] += 1
             return None
@@ -118,13 +124,25 @@ class FrameAssembler:
         if self._fid is None:
             self._fid = fid
         elif fid != self._fid:
-            completed = self._finish()
+            completed = None if self._discarding else self._finish()
             self._fid = fid
+            self._discarding = False
 
-        self._data.extend(packet[header_length:])
+        if not self._discarding:
+            size = len(self._data) + len(packet) - header_length
+            if size > self._buffer_limit:
+                self.last_rejected_size = size
+                self.last_rejected_prefix = self._data[:16].hex()
+                self.rejected["size_mismatch"] += 1
+                self._data.clear()
+                self._discarding = True
+            else:
+                self._data.extend(packet[header_length:])
         if flags & 0x02:
-            completed = self._finish() or completed
+            if not self._discarding:
+                completed = self._finish() or completed
             self._fid = None
+            self._discarding = False
         return completed
 
     @property

@@ -14,6 +14,7 @@ import numpy as np
 
 from .coreml_model import coreml_input_shape_overrides, explicit_coreml_padding
 from .enhancement_limits import MAX_PIXELS
+from .maintenance.logging import debug_enabled
 from .model_downloads import MODEL_DOWNLOADS
 from .nvidia_acceleration import cuda_providers
 from .onnx_models import MODELS, verified_model
@@ -207,6 +208,8 @@ class ONNXRuntime:
                     ),
                 )
             options = ort.SessionOptions()
+            # Keep native provider diagnostics behind the application's debug switch.
+            options.log_severity_level = 2 if debug_enabled() else 3
             options.intra_op_num_threads = 2
             if specialize:
                 input_height = height + height % 2 if model == "ffdnet-gray" else height

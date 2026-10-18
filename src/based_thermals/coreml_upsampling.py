@@ -14,6 +14,7 @@ import cv2
 import numpy as np
 
 from .coreml_model import explicit_coreml_padding
+from .maintenance.logging import debug_enabled
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +61,8 @@ class _CoreMLRuntime:
             )
             data = explicit_coreml_padding(data)
             options = ort.SessionOptions()
+            # ORT emits Core ML partition summaries at native WARNING severity.
+            options.log_severity_level = 2 if debug_enabled() else 3
             # CPU handles unsupported operators only within this isolated node.
             options.intra_op_num_threads = 1
             session = ort.InferenceSession(

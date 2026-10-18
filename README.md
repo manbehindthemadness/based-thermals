@@ -127,6 +127,9 @@ or measurements; later calibration pauses retain the last valid image and readin
 The Duo backend also rejects incomplete frames in its larger negotiated preview
 mode on macOS and Linux, preventing shifted preview bytes from appearing as hot
 scanlines during startup.
+Malformed USB streams that lose frame boundaries are discarded once the assembly
+buffer exceeds twice the larger of the negotiated and supported preview sizes;
+capture resumes at the next frame boundary without retaining an unbounded buffer.
 On exit, the app restores the camera settings it changed before releasing USB.
 The viewer shows a closing message until camera cleanup finishes. Keep the camera
 connected until the viewer disappears. If it is disconnected during
@@ -135,6 +138,22 @@ the original configuration remains saved under
 `$XDG_STATE_HOME/based-thermals/camera-baselines` (default
 `~/.local/state/based-thermals/camera-baselines`). When debug logging is enabled,
 each shutdown stage's duration is recorded in the application log for troubleshooting.
+Built-in ONNX enhancement sessions show native warning diagnostics (including
+Core ML partition summaries) only with Debug logs enabled; native errors remain
+visible. New sessions pick up the saved switch, including isolated Apple workers;
+restart the app to apply it to sessions that are already loaded.
+For a long-run memory investigation, start the viewer normally and monitor its PID
+from another terminal:
+
+```sh
+.venv/bin/python tools/watch_memory.py PID --output diagnostics/memory.jsonl
+```
+
+This passive macOS/Linux tool samples current resident
+memory for the viewer and its descendant helpers every five seconds for up to four
+hours, stopping when the viewer exits. It never opens USB or signals the app.
+The output file must be new. Resident memory can include shared pages; virtual
+address space is recorded separately and is not a measure of physical memory use.
 The number beside the status is elapsed viewport draw time in milliseconds:
 image preparation, measurement overlays, graph composition, frame copying and Qt
 painting. Camera waits, file saving, input handling, asynchronous processing and
