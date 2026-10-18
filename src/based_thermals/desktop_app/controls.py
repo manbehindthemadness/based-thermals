@@ -7,6 +7,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from .dual_camera import apply_camera_hardware
+from .restored_nodes import restored_hardware_nodes
 from .state import SessionState
 
 if TYPE_CHECKING:
@@ -488,11 +489,14 @@ class ControlsController(SessionState):
                         self.emissivity_calibration.cancel()
                     self.hardware.restore()
                     self.pipeline_hardware.invalidate_applied_state()
-                    for item in self.pipeline["hardware"]:
-                        item["bypass"] = True
+                    self.pipeline["hardware"] = restored_hardware_nodes(
+                        self.hardware, self.camera_profile.id,
+                    )
                     self.renderer.set_pipeline(self.pipeline)
                     self.pipeline_revision += 1
-                    self.remembered_gamma, self.remembered_boost = 50, 0
+                    self.remembered_gamma, self.remembered_boost = (
+                        self.hardware.gamma, self.hardware.boost,
+                    )
                     self.remembered_processing_preset = self.hardware.processing_preset
                     self.remembered_fixed_range = False
                     self.remembered_hardware.clear()

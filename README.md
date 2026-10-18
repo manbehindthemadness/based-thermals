@@ -134,6 +134,8 @@ scanlines during startup.
 Malformed USB streams that lose frame boundaries are discarded once the assembly
 buffer exceeds twice the larger of the negotiated and supported preview sizes;
 capture resumes at the next frame boundary without retaining an unbounded buffer.
+Imaging's **Restore camera settings** also rebuilds the hardware pipeline nodes
+with the restored values, preserving the software pipeline and its branches.
 On exit, the app restores the camera settings it changed before releasing USB.
 The viewer shows a closing message until camera cleanup finishes. Keep the camera
 connected until the viewer disappears. If it is disconnected during

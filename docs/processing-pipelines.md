@@ -78,6 +78,11 @@ individual exports in `presets/` and included in the package defaults, so they a
 available without local preferences. Fresh Duo installations start with
 **Detail Enhanced CPU Upscale**; existing installations restore their last working
 pipeline. Other camera profiles retain their own capability-based startup behavior.
+**Restore camera settings** in Imaging restores the camera's saved original
+settings and replaces the thermal hardware stack with active nodes showing those
+restored values. Software nodes and branches remain intact. Environmental
+corrections remain outside the hardware pipeline; other camera backends expose
+only their available device-level display controls.
 **Thermal Height Map** embeds the Thermal Surface Custom package and its saved
 view controls, with processed-preview and raw inset branches. No module-folder
 import or model download is needed. Its surface elevation follows grayscale
