@@ -4,11 +4,18 @@ import csv
 import json
 import struct
 from dataclasses import replace
+from pathlib import Path
 
 import numpy as np
 import pytest
 from test_camera import make_frame
 
+from based_thermals.camera_backends.duo.camera import (
+    IMAGE_OFFSET,
+    SENSOR_PIXELS,
+    YUY2_FRAME_BYTES,
+    NegotiatedFrameAssembler,
+)
 from based_thermals.desktop import save_capture
 from based_thermals.graphs import GraphSnapshot, GraphWorker
 from based_thermals.render import ThermalRenderer
@@ -114,3 +121,42 @@ def test_web_exposes_freeze_status_and_null_startup_readings() -> None:
     assert isinstance(response_data, dict)
     assert response_data["measurement_status"] == rendered.measurement_status
     assert response_data["stats"]["center"] is None
+
+
+def test_incomplete_startup_frames_never_reach_averages_graphs_or_csv(tmp_path: Path) -> None:
+    """
+    Keep shifted preview bytes out of the entire measurement path before and after startup.
+    """
+    preview = np.full(SENSOR_PIXELS * 4, 0x8038, dtype="<u2").tobytes()
+    first = make_frame(4500)[:IMAGE_OFFSET * 2] + preview
+    second = make_frame(4800)[:IMAGE_OFFSET * 2] + preview
+    damaged = first[:10_000] + first[17_802:]
+    assembler = NegotiatedFrameAssembler(YUY2_FRAME_BYTES)
+    renderer = ThermalRenderer(scale=1, smoothing=0.5)
+    renderer.native_temperatures = True
+    worker = GraphWorker()
+    try:
+        path = worker.start_logging(tmp_path / "startup.csv")
+        for index, payload in enumerate((damaged, first, damaged, second)):
+            frame = assembler.feed(bytes((2, 0x82 | (index % 2))) + payload)
+            if frame is None:
+                continue
+            rendered = renderer.render_detailed(frame)
+            stats = rendered.stats
+            snapshot = GraphSnapshot(
+                (stats.minimum, stats.average, stats.maximum, stats.center), (), (200, 200), "C",
+            )
+            with worker._condition:
+                worker._sample(snapshot, index)
+                worker._write_log(snapshot, index)
+        assert len(worker._master) == 2
+        expected = (4500 + 4800) / 2
+        np.testing.assert_array_equal(renderer.averaged_raw_counts, np.full((192, 256), expected))
+        assert all(max(stats) < 26 for _, stats in worker._master)
+        worker.stop_logging()
+        with path.open(newline="") as stream:
+            rows = list(csv.DictReader(stream))
+        assert len(rows) == 8  # Two complete frames, four global measurement series each.
+    finally:
+        worker.close()
+        renderer.pipeline_processor.close()

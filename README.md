@@ -121,6 +121,12 @@ In portrait layout, charts and their controls move below the image. The main
 toolbar uses slightly narrower native buttons to fit the default rotated image
 width with graphs hidden. Smaller windows use Qt's toolbar overflow menu.
 Watch the status bar for download progress, camera errors, and rejected settings.
+Thermal-only cameras keep showing **Waiting for camera** until their first valid
+radiometric frame. Frozen or invalid startup frames do not enter image processing
+or measurements; later calibration pauses retain the last valid image and readings.
+The Duo backend also rejects incomplete frames in its larger negotiated preview
+mode on macOS and Linux, preventing shifted preview bytes from appearing as hot
+scanlines during startup.
 On exit, the app restores the camera settings it changed before releasing USB.
 The viewer shows a closing message until camera cleanup finishes. Keep the camera
 connected until the viewer disappears. If it is disconnected during

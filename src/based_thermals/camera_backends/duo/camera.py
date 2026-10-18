@@ -159,12 +159,14 @@ class FrameAssembler:
         return frame
 
 
-class LinuxFrameAssembler(FrameAssembler):
-    """Keep complete negotiated frames and reject stale/partial USB data."""
+class NegotiatedFrameAssembler(FrameAssembler):
+    """
+    Keep complete negotiated frames and reject stale or partial USB data.
+    """
 
     def _finish(self) -> bytes | None:
         """
-        Require the complete negotiated Linux layout before shared Duo header validation.
+        Require the complete negotiated layout before shared Duo header validation.
         """
         if len(self._data) != self.frame_size:
             self.last_rejected_size = len(self._data)
@@ -176,6 +178,12 @@ class LinuxFrameAssembler(FrameAssembler):
             self._data.clear()
             return None
         return super()._finish()
+
+
+class LinuxFrameAssembler(NegotiatedFrameAssembler):
+    """
+    Preserve the public Linux assembler entry point for strict negotiated framing.
+    """
 
 
 def has_yuy2_preview(frame: bytes) -> bool:
@@ -459,16 +467,14 @@ class TC002CDuoCamera:
         mode = self.mode
         if mode is None:
             raise CameraError("Camera stream mode is unavailable")
-        if sys.platform.startswith("linux"):
-            # Linux can negotiate a larger preview plane. The radiometric
-            # plane stays at the same offset, but the entire USB frame must
-            # arrive before it is safe to use it. Keep macOS assembly intact.
+        if sys.platform.startswith("linux") or mode.max_frame_size > FRAME_BYTES:
+            # A larger negotiated layout must arrive intact on either platform;
+            # clipping a damaged frame can decode preview bytes as temperatures.
             if mode.max_frame_size < FRAME_BYTES:
                 raise CameraError(f"invalid negotiated frame size: {mode.max_frame_size}")
-            assembler = LinuxFrameAssembler(mode.max_frame_size)
+            assembler = NegotiatedFrameAssembler(mode.max_frame_size)
         else:
-            # Preserve tolerant macOS framing, including complete large
-            # previews when present. Queued requests prevent host gaps.
+            # Preserve the legacy macOS mode's known padding/full-preview tolerance.
             assembler = FrameAssembler()
         assembler.rejected_frame_observer = self.rejected_frame_observer
         read_size = max(16_384, mode.max_payload_size)

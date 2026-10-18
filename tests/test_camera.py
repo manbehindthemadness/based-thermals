@@ -1,6 +1,6 @@
 import struct
 from collections.abc import Generator
-from typing import Any, cast
+from typing import Any, Self, cast
 from unittest.mock import Mock
 
 import numpy as np
@@ -222,6 +222,73 @@ def test_macos_queued_capture_preserves_tolerant_framing(
     finally:
         frames.close()
     camera.device.read.assert_not_called()
+
+
+@pytest.mark.parametrize("platform", ["darwin", "linux"])
+@pytest.mark.parametrize("queue_depth", [0, 32])
+def test_large_negotiated_capture_rejects_preview_shifted_into_radiometry(
+    monkeypatch: pytest.MonkeyPatch, platform: str, queue_depth: int,
+) -> None:
+    """
+    Reject missing payloads before decoding, then deliver the next complete large frame.
+    """
+    monkeypatch.setattr(camera_module.sys, "platform", platform)
+    source = make_frame(4800)[:camera_module.IMAGE_OFFSET * 2]
+    source += np.full(SENSOR_PIXELS * 4, 0x8038, dtype="<u2").tobytes()
+    damaged = source[:10_000] + source[17_802:]
+    # This old fallback reproduces the captured false ~864 F startup scanlines.
+    _, shifted_raw, _ = decode_duo_frame(damaged[:FRAME_BYTES])
+    assert np.count_nonzero(shifted_raw == 0x8038) == 3901
+    packets = iter((b"\x02\x82" + damaged, b"\x02\x83" + source))
+
+    class Reader:
+        """
+        Supply the same damaged-then-complete stream through the queued USB boundary.
+        """
+
+        def __init__(self, *_args: Any) -> None:
+            """
+            Expose the queued transport's diagnostic status contract.
+            """
+            self.statuses = {}
+
+        def __enter__(self) -> Self:
+            """
+            Retain the fake transport as the sole queued reader.
+            """
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            """
+            Leave fake transport cleanup to the enclosing test.
+            """
+
+        @staticmethod
+        def read() -> bytes:
+            """
+            Return the next original payload without decoding or modifying it.
+            """
+            return next(packets)
+
+    monkeypatch.setattr("based_thermals.camera_backends.duo.camera.QueuedBulkReader", Reader)
+    camera = TC002CDuoCamera()
+    camera.usb_queue_depth = queue_depth
+    camera.device = Mock()
+    camera.device.read.side_effect = lambda *_args, **_kwargs: next(packets)
+    camera.mode = NegotiatedMode(1, 10, 400_000, YUY2_FRAME_BYTES, 16268)
+    rejected = []
+    camera.rejected_frame_observer = lambda frame: rejected.append(bytes(frame))
+    camera._running.set()
+    frames = cast(Generator[bytes, None, None], camera.frames())
+    try:
+        received = next(frames)
+        assert received == source
+        _, raw, preview = decode_duo_frame(received)
+        assert np.all(raw == 4800)
+        assert preview.shape == (384, 512)
+        assert rejected == [damaged]
+    finally:
+        frames.close()
 
 
 @pytest.mark.parametrize("platform", ["linux", "darwin"])

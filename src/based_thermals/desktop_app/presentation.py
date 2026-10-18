@@ -7,6 +7,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, cast
 
 from .. import macos_window
+from ..camera_backends import decode_frame
 from .state import SessionState
 
 if TYPE_CHECKING:
@@ -20,7 +21,7 @@ class PresentationController(SessionState):
 
     def receive_frame(self: DesktopSession) -> bool | None:
         """
-        Receive frame for the current desktop session.
+        Wait for usable startup data before publishing a thermal-only camera's first image.
         """
         if self.hardware.tone_busy:
             try:
@@ -46,6 +47,11 @@ class PresentationController(SessionState):
                 self.camera_operation = f"Camera tone update failed: {exc}"
                 self.camera_operation_until = self.api.time.monotonic() + 8
                 self.persist_settings()
+        if self.frame is not None and self.last_frame is None:
+            decoded = decode_frame(self.frame)
+            if (decoded.profile.radiometry and not decoded.profile.visible
+                    and (decoded.raw_counts is None or decoded.measurement_status)):
+                self.frame = None
         self.fresh_frame = self.frame is not None
         if self.fresh_frame:
             self.frame_captured_at = getattr(self.frame_pump, "captured_at", None)

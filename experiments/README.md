@@ -1,8 +1,33 @@
 # External resource checks
 
 Run the model checks below explicitly from the repository root using the configured project
-environment. They are outside pytest's normal `tests/` collection and do not access
-the camera.
+environment. They are outside pytest's normal `tests/` collection. The startup
+capture below explicitly opens the camera; the model and synthetic checks do not.
+
+## Live startup-frame capture
+
+Close other camera viewers, then launch the normal desktop through this passive recorder:
+
+```sh
+.venv/bin/python experiments/experiment_startup_frames.py
+# Optional desktop arguments follow --:
+.venv/bin/python experiments/experiment_startup_frames.py -- --rotate 90
+```
+
+On macOS, enter the normal USB helper password in the launching terminal if
+requested. Let the startup image settle and leave the app open for at least
+12 seconds, then quit normally. The app keeps its usual hardware startup and
+settings restoration; the recorder adds no camera commands or second USB owner.
+Files are written only after normal cleanup, under a new timestamped directory in
+`diagnostics/startup-frames` (`--output` changes the parent directory).
+
+The first 32 assembled frames are retained densely, then every fourth frame,
+bounded to 12 seconds, 96 samples and 64 MiB. The collector retains immutable byte
+references in memory so disk writes do not interrupt camera drainage. It also
+retains up to 128 existing stream-health events and the negotiated mode in
+`index.json`. These are original backend-delivered frames before decoding,
+including invalid radiometry; this is not a USB packet trace. Scene images remain
+local ignored diagnostic artifacts. Run this live check separately from pytest.
 
 ## Thermal Surface renderer (no external resources)
 
