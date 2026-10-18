@@ -35,6 +35,7 @@ class PipelineWorker:
         self.last_preview_at = 0.0
         self.closed = False
         self.processor = PipelineProcessor(apple_available=apple_available)
+        self.processor.defer_markup = True
         self.thread = Thread(target=self._run, name="image-pipeline", daemon=True)
         self.thread.start()
 
@@ -170,6 +171,7 @@ class PipelineWorker:
                     "timestamp": frame.timestamp,
                 } if isinstance(frame, CameraFrame) else {})
                 self.result_metadata["captured_at"] = captured_at
+                self.result_metadata["markup"] = list(self.processor.last_markup)
                 if previews is not None and self.preview_enabled:
                     self.preview_result = revision, previews
                     self.preview_errors = self.processor.last_preview_errors.copy()

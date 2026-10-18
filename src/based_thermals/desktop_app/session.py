@@ -7,11 +7,13 @@ from ..maintenance import MaintenancePaths
 from ..maintenance.export import SupportExport
 from ..maintenance.logging import SupportLogging, debug_enabled
 from ..maintenance_panel import MaintenancePanel
+from ..markup.interaction import MarkupGesture
 from ..measurements.drawing import MeasurementDrawing
 from .capture import CaptureController
 from .controls import ControlsController
 from .environment import EnvironmentPresets
 from .maintenance import MaintenanceController
+from .markup import MarkupController
 from .measurement_drawing import MeasurementDrawingController
 from .presentation import PresentationController
 from .settings import SettingsController
@@ -26,6 +28,7 @@ class DesktopSession(
     PresentationController,
     ViewerController,
     MeasurementDrawingController,
+    MarkupController,
     MaintenanceController,
 ):
     """
@@ -181,6 +184,7 @@ class DesktopSession(
         self.ambient_input_celsius = self.saved_settings.get("ambient_input_celsius")
         self.spot_drag = self.api.SpotDrag()
         self.measurement_drawing = MeasurementDrawing()
+        self.markup_gesture = MarkupGesture()
         self.distance_calibration = self.api.DistanceCalibrator(
             self.saved_settings.get("distance_calibration")
         )

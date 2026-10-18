@@ -2,10 +2,12 @@
 Collect custom-node labels for upright rendering at the final viewer resolution.
 """
 
+from __future__ import annotations
+
 from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import cv2
 import numpy as np
@@ -22,6 +24,13 @@ class DisplayLabel:
     text: str
     x: float
     y: float
+
+    def transformed(self, matrix: np.ndarray) -> DisplayLabel:
+        """
+        Move an anchor while allowing richer deferred annotations to retain their geometry.
+        """
+        anchor = matrix @ np.array((self.x, self.y, 1))
+        return replace(self, x=float(anchor[0] / anchor[2]), y=float(anchor[1] / anchor[2]))
 
 
 _collector: ContextVar[list[DisplayLabel] | None] = ContextVar("custom_labels", default=None)
@@ -60,13 +69,16 @@ def transform_labels(
     """
     Move anchors with image geometry while leaving glyphs upright and unmirrored.
     """
+    if rotation % 360 == 0 and not horizontal and not vertical:
+        return list(labels)
     transformed = []
+    matrix = np.eye(3)
+    for _ in range(rotation // 90):
+        matrix = np.array(((0, -1, 1), (1, 0, 0), (0, 0, 1))) @ matrix
+    mirror = np.array(((-1 if horizontal else 1, 0, int(horizontal)),
+                       (0, -1 if vertical else 1, int(vertical)), (0, 0, 1)))
     for label in labels:
-        x, y = label.x, label.y
-        for _ in range(rotation // 90):
-            x, y = 1 - y, x
-        transformed.append(DisplayLabel(label.text, 1 - x if horizontal else x,
-                                        1 - y if vertical else y))
+        transformed.append(label.transformed(mirror @ matrix))
     return transformed
 
 
@@ -98,17 +110,27 @@ def confidence_mask(
     return mask
 
 
-def draw_display_labels(image: np.ndarray, labels: list[DisplayLabel], rotation: int) -> np.ndarray:
+def draw_display_labels(
+    image: np.ndarray, labels: list[DisplayLabel], rotation: int, *, markup: bool = True,
+) -> np.ndarray:
     """
     Composite labels after all pipeline resizing and viewer rotation.
     """
     from ..desktop_app.overlays import draw_contrasting_overlay
+    from ..markup.labels import MarkupLabel
+    from ..markup.paint import draw_labels
 
     if not labels:
         return image
     height, width = image.shape[:2]
+    visible = labels if markup else [label for label in labels if not isinstance(label, MarkupLabel)]
+    transformed = transform_labels(visible, rotation)
     anchors = [(label.text, (round(label.x * (width - 1)), round(label.y * (height - 1))))
-               for label in transform_labels(labels, rotation)]
-    text = confidence_mask((height, width), anchors)
-    output = draw_contrasting_overlay(image, np.zeros_like(text), text)
+               for label in transformed if not isinstance(label, MarkupLabel)]
+    output = image
+    if anchors:
+        text = confidence_mask((height, width), anchors)
+        output = draw_contrasting_overlay(image, np.zeros_like(text), text)
+    if markup:
+        output = draw_labels(output, transformed)
     return output

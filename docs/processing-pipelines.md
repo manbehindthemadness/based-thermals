@@ -149,8 +149,48 @@ pipelines retain their explicitly configured pass counts.
 |                                                   | Combine: another tab, camera preview or raw thermal                       |
 |                                                   | Output → viewer (mandatory, last, tab A only)                             |
 |                                                   | Pipeline preview (repeatable, active only when expanded)                  |
+|                                                   | Markup: labels, text boxes, shapes, lines and arrows                      |
 |                                                   | Edge features: selected connected edges, overlays and masks               |
 |                                                   | Contour regions: selected shapes, outlines, fills and masks               |
+
+### Markup annotations
+
+Add **Markup** to a software branch to annotate its displayed image. Choose Label,
+Text box, Rectangle, Ellipse, Polygon, Line or Arrow, then **Add and draw**. Click
+to place a label, drag to draw a box/shape/line, or click polygon corners. Use the
+viewer's **Finish** button or Enter to commit; Esc cancels and Backspace undoes.
+**Draw on image** redraws the selected object. Once placed, drag an unlocked
+annotation to move it; enable the node's **Lock** checkbox to prevent accidental
+drawing or movement. Quick measurement placement takes priority while enabled.
+
+Each object has independent border, text and fill colors/opacities, plus border
+width, text size and optional fill. **Dynamic** uses the measurement overlay's
+contrast behavior: inverted borders with a visible halo, outlined white text,
+and inverted fill. **Z index**, **Bring to front** and **Send to back** work like
+the measurement layer controls, across Markup nodes: higher Z values draw above
+lower ones, and equal values keep their existing order. Z ranges from −1000 to
+1000; reaching a limit leaves the other layers unchanged. Painting and overlap
+selection use the same order, including during dragging. Older annotations
+without a saved Z value retain their existing order at Z = 0.
+Geometry, text, styles, Z index and Lock save with the pipeline and
+travel with preset exports/imports; no separate annotation file is needed.
+
+Markup changes only display pixels. It never creates temperature samples or
+changes native radiometry, graph readings, logging or calibration. Geometry
+follows subsequent built-in transforms, mirrors, viewer rotation and connected
+image branches; text remains upright at display resolution. As with deferred
+Custom labels, anchor visibility determines admission through crops/Replace;
+objects are not individually cut to a mix mask. Mask-only inputs contribute no
+annotations. Custom packages that rearrange pixels do not report spatial mappings.
+Place Markup near Output to annotate the final composition directly.
+
+The native viewer composites current styles and temporary previews over the
+worker result, without restarting expensive image processing on every drag.
+Cached local raster masks share a 64 MiB budget and a 256-entry limit. Each node
+supports up to 128 objects, 64 corners per polygon and 1,024 characters per label,
+within 64 KiB of annotation JSON. Text uses the existing OpenCV font.
+
+### Transform
 
 **Transform** replaces Mirror; older Mirror nodes migrate with their identity,
 position, bypass/expanded state and mirror settings intact. Width and Height

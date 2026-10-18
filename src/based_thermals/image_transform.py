@@ -102,10 +102,9 @@ def apply_transform(
                                      borderMode=cv2.BORDER_CONSTANT, borderValue=(0, 0, 0))
     transformed = []
     for label in labels:
-        anchor = matrix @ np.array((label.x, label.y, 1))
-        x, y = anchor[:2] / anchor[2]
-        if 0 <= x <= 1 and 0 <= y <= 1:
-            transformed.append(DisplayLabel(label.text, float(x), float(y)))
+        moved = label.transformed(matrix)
+        if 0 <= moved.x <= 1 and 0 <= moved.y <= 1:
+            transformed.append(moved)
     return output, transformed
 
 

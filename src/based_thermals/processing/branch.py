@@ -253,6 +253,10 @@ class BranchProcessor:
                     self.custom.labels.extend(self.input_labels.get(p["tab"], []))
             elif kind == "brightness":
                 image = map_luminance(image, lambda y, params=p: y + params["amount"] * 2.55)
+            elif kind == "markup":
+                from ..markup.labels import node_labels
+
+                self.custom.labels.extend(node_labels(item))
             elif kind == "invert":
                 image = invert_colors(image)
             elif kind == "contrast":

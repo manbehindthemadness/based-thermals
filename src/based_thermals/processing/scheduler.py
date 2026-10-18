@@ -53,6 +53,8 @@ class PipelineProcessor:
         self.collect_previews = False
         self.preview_active = False
         self.last_preview_errors = {}
+        self.defer_markup = False
+        self.last_markup: list[dict[str, Any]] = []
 
     def close(self) -> None:
         """
@@ -83,6 +85,7 @@ class PipelineProcessor:
         Execute dependent branches against one frame, carrying annotations and footprints.
         """
         self.last_previews = {}
+        self.last_markup = []
         self.last_preview_timings = {}
         self.last_preview_errors = {}
         frame = decode_frame(frame)
@@ -209,5 +212,9 @@ class PipelineProcessor:
         if sampling is not None and interpolation == cv2.INTER_NEAREST:
             interpolation = sampling
         display = bytes_image(resize(image, target, interpolation))
-        display = draw_display_labels(display, self.branches["A"].custom.labels, rotation)
+        from ..markup.labels import metadata
+
+        self.last_markup = metadata(self.branches["A"].custom.labels, rotation)
+        display = draw_display_labels(display, self.branches["A"].custom.labels, rotation,
+                                      markup=not self.defer_markup)
         return display, source

@@ -147,6 +147,7 @@ class PresentationController(SessionState):
             )
         processed = self.pipeline_worker.latest(self.pipeline_revision)
         result_metadata = {}
+        self.markup_frames = []
         if hasattr(self.pipeline_worker, "latest_with_metadata"):
             processed, result_metadata = self.pipeline_worker.latest_with_metadata(
                 self.pipeline_revision
@@ -158,6 +159,8 @@ class PresentationController(SessionState):
                 self.api.LOG.warning("Image pipeline failed: %s", self.pipeline_error)
                 self.notify(f"Image pipeline: {self.pipeline_error}")
             if image is not None:
+                self.markup_frames = result_metadata.get("markup", [])
+                image = self.draw_markup(image)
                 self.display_captured_at = result_metadata.get("captured_at")
                 mapping_valid = self.rendered.measurement_mapping_valid
                 if result_metadata.get("uses_visible"):

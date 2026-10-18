@@ -39,7 +39,7 @@ class DrawingToolbar(QToolBar):
         """
         self.active = bool(state.get("active"))
         self.setVisible(self.active)
-        role = "Exclusion" if state.get("exclude") else "Measurement"
+        role = state.get("role", "Exclusion" if state.get("exclude") else "Measurement")
         self.label.setText(f"{role} · {state.get('kind', '')}: {state.get('hint', '')}  ")
         self.buttons["draw_finish"].setEnabled(bool(state.get("finish")))
         self.buttons["draw_undo"].setEnabled(bool(state.get("undo")))

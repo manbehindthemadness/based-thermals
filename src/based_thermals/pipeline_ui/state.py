@@ -96,6 +96,8 @@ def update_editor_state(self: PipelineEditor, state: Any, locked: Any) -> None:
     self.update_titles()
     for custom in self.custom_widgets.values():
         custom.refresh()
+    for markup in self.markup_widgets.values():
+        markup.refresh()
     pass_limits = enhancement_pass_limits(self.document, clamp=True)
     self.update_preset_selection()
     current = state.get("pipeline_serial", 0) >= self.edit_serial

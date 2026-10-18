@@ -29,6 +29,18 @@ retains up to 128 existing stream-health events and the negotiated mode in
 including invalid radiometry; this is not a USB packet trace. Scene images remain
 local ignored diagnostic artifacts. Run this live check separately from pytest.
 
+## Markup compositor (no external resources)
+
+For display-only Markup performance and PNG previews without camera access:
+
+```sh
+.venv/bin/python experiments/experiment_markup.py --frames 100 --output diagnostics/markup
+```
+
+This measures the actual main-process compositor on a synthetic 768×576 frame
+with 1, 10 and 128 annotations, reporting cold, warm median and p95 milliseconds.
+It uses existing dependencies and never reads user preferences or opens USB.
+
 ## Thermal Surface renderer (no external resources)
 
 ```sh

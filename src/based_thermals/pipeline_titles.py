@@ -46,6 +46,11 @@ def node_title(stack: str, item: dict[str, Any], temperature_unit: str = "C") ->
             suffix = option("value")
     elif kind == "custom":
         suffix = p["name"] or "Choose module folder"
+    elif kind == "markup":
+        from .markup.model import read_annotations
+
+        count = len(read_annotations(p["annotations"]))
+        suffix = f"{count} annotation{'s' if count != 1 else ''}" + (" · Locked" if p["locked"] else "")
     elif kind == "source":
         suffix = option("source")
     elif kind == "colors":

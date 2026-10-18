@@ -13,6 +13,7 @@ from ..custom_nodes.bundle import validate_custom
 from ..feature_processing import validate_feature
 from ..image_filters import validate_filter
 from ..image_transform import transform_matrix
+from ..markup.model import read_annotations
 from ..view_settings import VIEW_DEFAULTS
 from .catalog import (
     CATALOG,
@@ -202,6 +203,8 @@ def validate_pipeline(document: Any, *, hardware_profile: str = "duo") -> dict[s
                 transform_matrix(item["params"])
             if stack == "software" and kind == "custom":
                 validate_custom(item["params"])
+            if stack == "software" and kind == "markup":
+                read_annotations(item["params"]["annotations"])
             if stack == "software" and kind == "filter":
                 validate_filter(item["params"])
             if stack == "software" and kind in ("edges", "contours"):

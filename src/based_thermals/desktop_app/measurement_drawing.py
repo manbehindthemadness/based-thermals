@@ -36,6 +36,7 @@ class MeasurementDrawingController(SessionState):
         if self.viewer is None:
             raise ValueError("Drawing on preview requires the Qt viewer")
         size = state["sensor_size"][0], state["sensor_size"][1]
+        self.markup_gesture.cancel()
         self.measurement_drawing.begin(
             command.get("kind"), command.get("exclude", False), size, state["orientation"]
         )

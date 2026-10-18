@@ -136,6 +136,10 @@ buffer exceeds twice the larger of the negotiated and supported preview sizes;
 capture resumes at the next frame boundary without retaining an unbounded buffer.
 Imaging's **Restore camera settings** also rebuilds the hardware pipeline nodes
 with the restored values, preserving the software pipeline and its branches.
+The **Markup** software node adds display-only labels, text boxes, shapes, lines
+and arrows. Draw on the viewer, drag annotations later, and enable **Lock** to
+protect their positions. Appearance and geometry save with the pipeline without
+changing temperatures or measurements. See the [pipeline guide](docs/processing-pipelines.md#markup-annotations).
 On exit, the app restores the camera settings it changed before releasing USB.
 The viewer shows a closing message until camera cleanup finishes. Keep the camera
 connected until the viewer disappears. If it is disconnected during

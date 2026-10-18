@@ -42,6 +42,7 @@ from .custom import CustomControls
 from .dual import desired_camera_hardware as desired_hardware
 from .hardware import HardwareControlFields
 from .hardware_section import HardwareSection
+from .markup import MarkupControls
 from .presets import pipeline_content, rename_current_preset
 from .selection import PresetSelection
 from .state import update_editor_state
@@ -72,6 +73,7 @@ class PipelineEditor(PipelineTabs, QWidget):
         self.widgets: dict[str, tuple[str, dict[str, ControlRow], Any, Any, Any]] = {}
         self.custom_widgets: dict[str, CustomControls] = {}
         self.hardware_widgets: dict[str, HardwareControlFields] = {}
+        self.markup_widgets: dict[str, MarkupControls] = {}
         self.preview_widgets = {}
         self.preview_timing_widgets = {}
         self.preview_cache = {}
@@ -545,6 +547,7 @@ class PipelineEditor(PipelineTabs, QWidget):
             if software_only and widgets[0] != "software"
         }
         self.custom_widgets = {}
+        self.markup_widgets = {}
         if not software_only:
             self.hardware_widgets = {}
         self.preview_widgets = {}
@@ -632,6 +635,11 @@ class PipelineEditor(PipelineTabs, QWidget):
                     custom = CustomControls(self, item)
                     self.custom_widgets[item["id"]] = custom
                     fields.addWidget(custom)
+                    definitions = {}
+                if item["type"] == "markup":
+                    markup = MarkupControls(self, item)
+                    self.markup_widgets[item["id"]] = markup
+                    fields.addWidget(markup)
                     definitions = {}
                 for key, spec in definitions.items():
                     row = self.row_class(

@@ -228,7 +228,7 @@ class SettingsController(SessionState):
                     tab: [
                         (n["type"], n["params"], n["bypass"])
                         for n in tabs[tab]
-                        if n["type"] != "preview"
+                        if n["type"] not in ("preview", "markup")
                     ]
                     for tab in self.api.execution_dependencies(pipeline_document)
                 },

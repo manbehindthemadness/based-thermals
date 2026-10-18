@@ -190,6 +190,10 @@ def feature_parameters() -> Any:
 
 
 SOFTWARE_NODES = {
+    "markup": (
+        "Markup",
+        {"annotations": Parameter("Annotations", "[]"), "locked": switch("Lock positions")},
+    ),
     "custom": (
         "Custom",
         {

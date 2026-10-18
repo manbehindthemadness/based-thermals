@@ -23,10 +23,13 @@ class ViewerController(SessionState):
         Return toolbar activity, graph settings and measurement locks.
         """
         self.reconcile_measurement_drawing()
+        self.reconcile_markup()
         return {
             "rotation": self.renderer.rotation,
             "viewer_layout": self.viewer_layout,
-            "measurement_drawing": self.measurement_drawing.state(),
+            "measurement_drawing": (self.markup_gesture.state()
+                                    if self.markup_gesture.mode == "draw"
+                                    else self.measurement_drawing.state()),
             "unit": self.renderer.temperature_unit,
             "show_graph": self.show_graph,
             "show_instructions": self.show_instructions,
@@ -87,7 +90,10 @@ class ViewerController(SessionState):
                 elif action == "orientation":
                     self.set_viewer_orientation(command)
                 elif action in ("draw_finish", "draw_cancel", "draw_undo"):
-                    self.measurement_drawing_action(action)
+                    if self.markup_gesture.mode == "draw":
+                        self.markup_action(action)
+                    else:
+                        self.measurement_drawing_action(action)
                 elif action == "measurement_nudge":
                     if (
                         not self.spots_state()["locked"]
@@ -195,7 +201,7 @@ class ViewerController(SessionState):
             return
         if not (-1 <= x <= 16384 and -1 <= y <= 16384 and 0 <= flags <= 63):
             return
-        if self.measurement_drawing_pointer(command):
+        if self.markup_pointer(command) or self.measurement_drawing_pointer(command):
             return
         if (
             hasattr(self, "rendered")
