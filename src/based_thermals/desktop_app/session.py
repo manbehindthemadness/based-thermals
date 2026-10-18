@@ -271,7 +271,9 @@ class DesktopSession(
             self.frame_pump = self.api.CameraFramePump(self.camera)
             self.diagnostics.stage("hardware_setup")
             self.display_awake.start()
-            self.hardware_setup_pending = not self.initialize_hardware()
+            self.hardware_setup_pending = (
+                self.camera_profile.id == "duo" or not self.initialize_hardware()
+            )
             self.hardware_retry_deadline = None
             self.next_hardware_retry = 0.0
             self.viewer = self.api.ViewerPanel()

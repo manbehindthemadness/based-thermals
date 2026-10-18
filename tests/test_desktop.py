@@ -1,4 +1,5 @@
 import json
+from collections.abc import Iterator
 from dataclasses import replace
 from pathlib import Path
 from unittest.mock import Mock
@@ -427,7 +428,7 @@ def test_desktop_spot_control_places_multiple_spots_rotates_and_stops_placement(
     hardware.load.side_effect = lambda: startup.append("hardware")
     monkeypatch.setattr(desktop, "HardwareControls", lambda _camera: hardware)
     camera = Mock()
-    camera.frames.return_value = [make_frame()] * 8
+    camera.frames.return_value = [make_frame()] * 9  # First frame gates hardware setup.
     camera.open.side_effect = lambda: startup.append("camera")
     monkeypatch.setattr(desktop, "TC002CDuoCamera", lambda: camera)
 
@@ -436,8 +437,13 @@ def test_desktop_spot_control_places_multiple_spots_rotates_and_stops_placement(
             self._source = source
             startup.append("stream")
 
-        def __iter__(self):
-            return iter(self._source.frames())
+        def __iter__(self) -> Iterator[bytes]:
+            """
+            Record frame arrival so startup must wait for synchronization before settings.
+            """
+            for frame in self._source.frames():
+                startup.append("frame")
+                yield frame
 
         def close(self):
             pass
@@ -496,7 +502,7 @@ def test_desktop_spot_control_places_multiple_spots_rotates_and_stops_placement(
     monkeypatch.setattr(desktop.cv2, "waitKey", wait_key)
     # The synthetic clicks above deliberately target the legacy 3x canvas.
     assert desktop.main(["--scale", "3"]) == 0
-    assert startup[:3] == ["camera", "stream", "hardware"]
+    assert startup[:4] == ["camera", "stream", "frame", "hardware"]
     assert states == [
         (False, []),
         (False, []),

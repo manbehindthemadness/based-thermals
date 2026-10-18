@@ -124,6 +124,10 @@ Watch the status bar for download progress, camera errors, and rejected settings
 Thermal-only cameras keep showing **Waiting for camera** until their first valid
 radiometric frame. Frozen or invalid startup frames do not enter image processing
 or measurements; later calibration pauses retain the last valid image and readings.
+The Duo also waits for that frame before reading and restoring hardware settings.
+Saved environment corrections share one verified block write, with the complete
+original settings captured first. Frames captured before restoration finishes do
+not enter measurements, graphs, logging or calibration.
 The Duo backend also rejects incomplete frames in its larger negotiated preview
 mode on macOS and Linux, preventing shifted preview bytes from appearing as hot
 scanlines during startup.

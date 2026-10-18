@@ -56,8 +56,19 @@ class ControlsController(SessionState):
             if getattr(self, "visible_hardware", None) is not None:
                 self.visible_hardware.load()
             self.hardware.error = ""
+            environment = {}
+            if self.camera_profile.id == "duo":
+                environment = {
+                    name: value for name, value in self.remembered_hardware.items()
+                    if name in self.hardware.specs and self.hardware.specs[name].effect == "measurement"
+                }
+                try:
+                    self.hardware.set_environment(environment)
+                except (self.api.CameraError, ValueError, TypeError) as exc:
+                    self.hardware.error = f"Could not restore saved environment: {exc}"
+                    self.api.LOG.warning("%s", self.hardware.error)
             for name, value in self.remembered_hardware.items():
-                if name in self.api.PIPELINE_FIELDS:
+                if name in self.api.PIPELINE_FIELDS or name in environment:
                     continue
                 if self.camera_profile.id != "duo" and not self.hardware.state().get(
                     name, {},

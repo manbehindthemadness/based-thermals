@@ -69,6 +69,7 @@ class SessionState:
     hardware: api_types.HardwareControls = field(init=False)
     hardware_retry_deadline: float | None = None
     hardware_setup_pending: bool = False
+    hardware_startup_after: float | None = None
     initial_window_size_set: bool = False
     last_frame: bytes | CameraFrame | None = None
     last_frame_at: float | None = None

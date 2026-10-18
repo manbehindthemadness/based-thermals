@@ -61,6 +61,14 @@ def viewer_fixture(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Any:
             hardware.enabled.discard(name)
 
     hardware.set.side_effect = set_hardware
+    def set_environment(values: dict[str, float]) -> None:
+        """
+        Publish the effective targets of one simulated environment-block transaction.
+        """
+        for name, value in values.items():
+            set_hardware(name, value, True)
+
+    hardware.set_environment.side_effect = set_environment
     hardware.set_pipeline.side_effect = lambda name, value, enabled: hardware.set(name, value, enabled)
     baseline = {name: value["value"] for name, value in hardware.state.return_value.items()}
 

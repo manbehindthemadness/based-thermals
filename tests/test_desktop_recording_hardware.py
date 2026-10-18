@@ -40,7 +40,9 @@ def test_hardware_ambient_changes_and_restore_drive_measurements(
     # noinspection PyUnresolvedReferences
     monkeypatch.setattr(desktop, "ViewPanel", lambda: panel)
     # Simulate corrected counts delivered by the camera following an ambient write.
-    viewer.camera.frames.return_value = [make_frame(4500), make_frame(4600), make_frame(4500)]
+    viewer.camera.frames.return_value = [
+        make_frame(4500), make_frame(4500), make_frame(4600), make_frame(4500),
+    ]
     monkeypatch.setattr(desktop.cv2, "getWindowProperty", lambda *_args: 1)
     monkeypatch.setattr(desktop.cv2, "waitKey", viewer.key_events([-1, -1, "q"]))
     assert desktop.main(["--ambient", "99"]) == 0
@@ -63,7 +65,9 @@ def test_startup_calibration_waits_for_valid_frame_and_runs_once(
 ) -> None:
     from test_measurement_validity import frozen_frame
 
-    viewer.camera.frames.return_value = [frozen_frame(), make_frame(0), make_frame(), make_frame()]
+    viewer.camera.frames.return_value = [
+        frozen_frame(), make_frame(0), make_frame(), make_frame(), make_frame(),
+    ]
     monkeypatch.setattr(desktop.cv2, "getWindowProperty", lambda *_args: 1)
     counts = []
 
@@ -86,7 +90,7 @@ def test_missing_frames_keep_ui_active_and_exclude_stale_measurements(
     from based_thermals.settings_preferences import save_settings
 
     save_settings({"show_graph": True})
-    viewer.camera.frames.return_value = [make_frame(), None, None, make_frame(24000)]
+    viewer.camera.frames.return_value = [make_frame(), make_frame(), None, None, make_frame(24000)]
     monkeypatch.setattr(desktop.cv2, "getWindowProperty", lambda *_args: 1)
     step = 0
 
@@ -136,9 +140,11 @@ def test_hardware_settings_retry_after_frames_arrive_before_applying_values(
         """
         Frames.
         """
-        assert viewer.hardware.load.call_count == 1
+        assert viewer.hardware.load.call_count == 0
         viewer.hardware.set_auto_calibrate.assert_not_called()
         viewer.hardware.set.assert_not_called()
+        yield make_frame()
+        yield make_frame()
         yield make_frame()
         yield make_frame()
 
@@ -148,15 +154,15 @@ def test_hardware_settings_retry_after_frames_arrive_before_applying_values(
         """
         counts.append(viewer.hardware.calibrate_now.call_count)
         viewer.clock[0] += 1.1
-        return ord("q") if len(counts) == 2 else -1
+        return ord("q") if len(counts) == 3 else -1
 
     viewer.camera.frames.side_effect = frames
     monkeypatch.setattr(desktop.cv2, "waitKey", wait_key)
     assert desktop.main([]) == 0
     assert viewer.hardware.load.call_count == 3
-    viewer.hardware.set.assert_called_once_with("ambient", 22.2, True)
+    viewer.hardware.set_environment.assert_called_once_with({"ambient": 22.2})
     viewer.hardware.set_auto_calibrate.assert_called_once_with(False)
-    assert counts == [0, 1]
+    assert counts == [0, 0, 1]
 
 
 def test_hardware_startup_retries_are_bounded_and_do_not_send_calibration(
@@ -177,7 +183,7 @@ def test_hardware_startup_retries_are_bounded_and_do_not_send_calibration(
 
     monkeypatch.setattr(desktop.cv2, "waitKey", wait_key)
     assert desktop.main([]) == 0
-    assert viewer.hardware.load.call_count == 5
+    assert viewer.hardware.load.call_count == 4
     viewer.hardware.set_auto_calibrate.assert_not_called()
     viewer.hardware.calibrate_now.assert_not_called()
 
@@ -238,10 +244,11 @@ def test_ambient_input_keeps_requested_value_but_sends_quantized_temperature(
     assert viewer.draw_toolbar.call_args.args[1] == 22.2
     assert load_settings()["ambient_input_celsius"] == 22.2222222222
     viewer.hardware.set.reset_mock()
+    viewer.hardware.set_environment.reset_mock()
     panel.poll.side_effect = None
     panel.poll.return_value = []
     assert desktop.main([]) == 0
-    viewer.hardware.set.assert_called_once_with("ambient", 22.2, True)
+    viewer.hardware.set_environment.assert_called_once_with({"ambient": 22.2})
     assert panel.update.call_args.args[0]["hardware"]["ambient"]["value"] == 22.2222222222
 
 

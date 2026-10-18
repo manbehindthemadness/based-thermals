@@ -109,6 +109,41 @@ def test_invalid_frames_after_startup_still_hold_last_valid_image(session: Deskt
     np.testing.assert_array_equal(decode_frame(held).raw_counts, decode_frame(good).raw_counts)
 
 
+def test_duo_initializes_only_after_valid_frame_and_discards_pre_settings_samples(
+    session: DesktopSession, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    Wait for transport synchronization and never average the frame captured before restoration.
+    """
+    from types import SimpleNamespace
+
+    initialize = Mock(return_value=True)
+    monkeypatch.setattr(
+        "based_thermals.desktop_app.controls.ControlsController.initialize_hardware", initialize,
+    )
+    monkeypatch.setattr(desktop.time, "monotonic", lambda: 10.0)
+    session.hardware_setup_pending = True
+    pump = SimpleNamespace(captured_at=9.0)
+    session.frame_pump = cast(Any, pump)
+    for frame in (None, frozen_frame(), make_frame(0)):
+        session.frame = frame
+        assert session.receive_frame() is True
+    initialize.assert_not_called()
+    session.frame = make_frame(4500)
+    assert session.receive_frame() is True
+    initialize.assert_called_once()
+    assert session.frame is None and session.last_frame is None
+    assert session.renderer.averaged_raw_counts is None
+    session.frame = make_frame(4500)
+    assert session.receive_frame() is True  # A queued pre-settings frame remains ineligible.
+    pump.captured_at = 10.1
+    session.frame = make_frame(4800)
+    assert session.receive_frame() is None
+    session.render_frame()
+    assert session.rendered.measurements_valid
+    np.testing.assert_array_equal(session.renderer.averaged_raw_counts, np.full((192, 256), 4800))
+
+
 def test_preview_only_camera_does_not_wait_for_radiometry(session: DesktopSession) -> None:
     """
     Preserve the first image of non-radiometric backends.

@@ -49,8 +49,14 @@ class PresentationController(SessionState):
                 self.persist_settings()
         if self.frame is not None and self.last_frame is None:
             decoded = decode_frame(self.frame)
+            captured_at = getattr(self.frame_pump, "captured_at", None)
+            ready_after = self.hardware_startup_after
+            before_settings = (
+                ready_after is not None and isinstance(captured_at, (float, int))
+                and captured_at < ready_after
+            )
             if (decoded.profile.radiometry and not decoded.profile.visible
-                    and (decoded.raw_counts is None or decoded.measurement_status)):
+                    and (decoded.raw_counts is None or decoded.measurement_status or before_settings)):
                 self.frame = None
         self.fresh_frame = self.frame is not None
         if self.fresh_frame:
@@ -76,6 +82,7 @@ class PresentationController(SessionState):
         else:
             self.frame = self.last_frame
         if self.hardware_setup_pending:
+            starting_duo = self.camera_profile.id == "duo" and self.renderer.last_valid_frame is None
             now = self.api.time.monotonic()
             if self.hardware_retry_deadline is None:
                 self.hardware_retry_deadline = now + 30
@@ -85,6 +92,13 @@ class PresentationController(SessionState):
                 self.next_hardware_retry = now + 1
                 if not self.hardware_setup_pending:
                     self.notify("Camera settings loaded after startup")
+                    if starting_duo:
+                        self.hardware_startup_after = self.api.time.monotonic()
+                        self.frame = self.last_frame = None
+                        self.last_frame_at = self.frame_captured_at = None
+                        self.fresh_frame = False
+                        self.renderer.request_measurement_restart()
+                        return True
                 elif (
                     self.hardware_retry_deadline is not None and now >= self.hardware_retry_deadline
                 ):

@@ -95,6 +95,7 @@ def test_qt_session_has_no_bitmap_controls_and_samples_top_row(
     """
     panel = Mock(size=None, windowed_size=(768, 576), over_image=True, closed=False)
     panel.poll.side_effect = [
+        [],  # A synchronization frame precedes usable viewport input.
         [{"action": "key", "key": ord("p")}],
         [{"action": "pointer", "kind": "release", "button": "left", "x": 0, "y": 0}],
         [{"action": "unit"}],
@@ -156,6 +157,7 @@ def test_qt_graph_display_has_no_header_hotspots(
     desktop.save_settings({"show_graph": True})
     panel = Mock(size=(1536, 576), windowed_size=(1536, 576), over_image=False, closed=False)
     panel.poll.side_effect = [
+        [],  # Hardware initialization discards its pre-settings frame.
         [],
         [{"action": "pointer", "kind": "release", "button": "left", "x": 1400, "y": 10}],
         [{"action": "quit"}],

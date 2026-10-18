@@ -310,12 +310,18 @@ class HardwareControls:
         self.gamma, self.boost = 50, 0
 
     def _processing_command(self, mode: int | None = None) -> int:
+        """
+        Exchange an audited preset request and retain debug evidence of mailbox timeouts.
+        """
         body = bytes((0x36, 0x23, 1 if mode is None else 0))
         if mode is not None:
             if mode not in PROCESSING_PRESETS.values():
                 raise ValueError("Unsupported camera processing mode")
             body += struct.pack(">H", mode)
         packet = bytes((0xF0, len(body))) + body + bytes((sum(body) & 255, 0xFF))
+        operation = "read bank" if mode is None else f"set mode {mode}"
+        LOG.debug("Processing preset request: %s packet=%s", operation, packet.hex())
+        polls, last_length = 0, b""
         try:
             device = self.camera.device
             if device.ctrl_transfer(0x41, 1, 0, 0x0A00, packet, timeout=2000) != len(packet):
@@ -323,6 +329,7 @@ class HardwareControls:
             deadline = time.monotonic() + 2
             while time.monotonic() < deadline:
                 length = bytes(device.ctrl_transfer(0xC1, 0x85, 0, 0x0A00, 4, timeout=2000))
+                polls, last_length = polls + 1, length
                 size = int.from_bytes(length, "little")
                 if len(length) not in (2, 4) or size > 128:
                     raise CameraError("Unsupported processing preset mailbox")
@@ -336,10 +343,13 @@ class HardwareControls:
                             or sum(reply[2:-2]) & 255 != reply[-2]):
                         raise CameraError("Invalid processing preset acknowledgement")
                     value = int.from_bytes(reply[5:-2], "big")
+                    LOG.debug("Processing preset reply: %s packet=%s", operation, reply.hex())
                     if mode is not None and value != 1:
                         raise CameraError("Camera rejected processing preset")
                     return value
                 time.sleep(0.04)
+            LOG.debug("Processing preset timeout: %s polls=%d last_length=%s",
+                      operation, polls, last_length.hex())
             raise CameraError("Processing preset command timed out")
         except (usb.core.USBError, AttributeError) as exc:
             raise CameraError(f"Processing preset transfer failed: {exc}") from exc
@@ -694,6 +704,14 @@ class HardwareControls:
             self.set_fixed_range(True)
         if spec.selector == 2 and self._tone_owned:
             self.set_tone(self.gamma, self.boost)
+
+    def set_environment(self, settings: dict[str, object]) -> None:
+        """
+        Apply saved correction fields together using the existing verified SDK write path.
+        """
+        from .startup_settings import apply_environment
+
+        apply_environment(self, settings)
 
     def set_pipeline(self, name: str, value: float, enabled: bool) -> None:
         """

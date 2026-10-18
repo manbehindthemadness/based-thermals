@@ -329,6 +329,7 @@ def test_full_session_popup_tool_draws_on_video_and_persists_completed_shape(
     """
     native_viewer = Mock(size=None, windowed_size=(768, 576), over_image=True, closed=False)
     native_viewer.poll.side_effect = [
+        [],  # Wait for hardware restoration before drawing on the first usable image.
         [],
         [
             {"action": "pointer", "kind": "press", "button": "left", "x": 30, "y": 30},

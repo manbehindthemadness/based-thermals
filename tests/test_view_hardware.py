@@ -44,9 +44,9 @@ def test_startup_loads_all_calibration_references_and_applied_camera_values(
         assert state[name]["reference"] == reference
         assert load_settings()[name] == reference
     for name, value in applied.items():
-        viewer.hardware.set.assert_any_call(name, value, True)
         assert state["hardware"][name]["value"] == value
         assert state["hardware"][name]["enabled"]
+    viewer.hardware.set_environment.assert_called_once_with(applied)
     assert load_settings()["hardware"] == applied
 
 

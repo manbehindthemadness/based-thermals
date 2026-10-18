@@ -91,7 +91,7 @@ def test_show_graph_survives_restart_without_doubling_again(
 
     monkeypatch.setattr(desktop.cv2, "getWindowProperty", lambda *_args: 1)
     monkeypatch.setattr(desktop.cv2, "waitKey", lambda _delay: ord("g"))
-    viewer.camera.frames.return_value = [make_frame()]
+    viewer.camera.frames.return_value = [make_frame(), make_frame()]
     assert desktop.main([]) == 0
     assert load_settings()["show_graph"] is True
     size = load_main_window_size()
