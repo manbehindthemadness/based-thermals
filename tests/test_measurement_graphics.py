@@ -66,7 +66,7 @@ def test_metadata_and_saved_height_map_snapshots_need_no_import_or_preference_re
 
 def test_bypasses_idle_branches_masks_and_full_replacements_follow_output_contribution() -> None:
     """
-    Ordinary filters and overlays remain visible; only contributing visualizations hide graphics.
+    Only contributing A visualizations hide graphics; auxiliary tabs provide footprints only.
     """
     visual = visualization()
     document = raw_pipeline(visual)
@@ -80,6 +80,8 @@ def test_bypasses_idle_branches_masks_and_full_replacements_follow_output_contri
     masked["params"].update(tab="B", mask_source="none", opacity=0)
     assert measurement_graphics_visible(document)
     masked["params"]["opacity"] = .5
+    assert measurement_graphics_visible(document)
+    visual["bypass"] = False
     assert not measurement_graphics_visible(document)
     replacement = node("software", "combine", tab="raw", mode="replace")
     document["software"].insert(-1, replacement)
@@ -90,6 +92,23 @@ def test_bypasses_idle_branches_masks_and_full_replacements_follow_output_contri
     document = raw_pipeline(node("software", "filter"), node("software", "markup"),
                             node("software", "custom"))
     assert measurement_graphics_visible(document)
+
+
+@pytest.mark.parametrize("tab", ["B", "C", "D"])
+@pytest.mark.parametrize("mode", ["replace", "opacity"])
+@pytest.mark.parametrize("inset", [False, True])
+def test_auxiliary_visualizations_never_hide_measurement_graphics(
+    tab: str, mode: str, inset: bool,
+) -> None:
+    """
+    Connected visualization images and insets in any auxiliary tab leave native graphics visible.
+    """
+    document = raw_pipeline(node("software", "combine", tab=tab, mode=mode))
+    nodes = raw_pipeline(visualization())["software"][:-1]
+    if inset:
+        nodes.append(node("software", "transform", width=35, height=35))
+    document["branches"][tab] = nodes
+    assert measurement_graphics_visible(validate_pipeline(document))
 
 
 @pytest.mark.usefixtures("viewer")

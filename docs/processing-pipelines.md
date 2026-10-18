@@ -209,9 +209,10 @@ Place Markup near Output to annotate the final composition directly.
 
 The native viewer composites current styles and temporary previews over the
 worker result, without restarting expensive image processing on every drag.
-Visualization outputs such as **Thermal Height Map** automatically hide sensor
+Visualization nodes such as **Thermal Height Map**, placed directly in pipeline A, hide sensor
 measurement graphics. Measurement activation, sampling, graphs and CSV logging
 remain unchanged, so Markup variables still show readings from those measurements.
+Visualization nodes in other tabs do not trigger hiding, even when connected to A.
 Returning to an image feed restores the graphics automatically.
 Cached local raster masks share a 64 MiB budget and a 256-entry limit. Each node
 supports up to 128 objects, 64 corners per polygon and 8,192 characters per label,

@@ -43,11 +43,13 @@ An unloaded Custom node passes its input through.
 
 Packages that replace the camera image with a chart, projected surface or other
 visualization should declare `OUTPUT_KIND = "visualization"` as a literal in root
-`__init__.py`. The default is `"image"`. The viewer then automatically hides sensor
-measurement graphics (shapes, labels, handles, picker and dynamic markers) on the
-resulting composite. This is visual only: enabled measurements keep sampling, graph
-and CSV values continue, and Markup variables can display their readings. Bypassing
+`__init__.py`. The default is `"image"`. When that node is directly in pipeline A,
+the viewer automatically hides sensor measurement graphics (shapes, labels,
+handles, picker and dynamic markers) on the resulting composite. This is visual
+only: enabled measurements keep sampling, graph and CSV values continue, and
+Markup variables can display their readings. Bypassing
 the visualization or replacing it fully with an image feed restores the graphics.
+Visualization nodes in other tabs never trigger hiding, even when blended into A.
 Idle previews and mask-only inputs do not hide them. The declaration is read without
 executing package code; already-saved original Thermal Surface packages are also
 recognized without rewriting preferences.

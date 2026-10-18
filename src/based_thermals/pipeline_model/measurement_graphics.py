@@ -33,10 +33,10 @@ def image_feed(package: str) -> bool:
 
 def measurement_graphics_visible(document: dict[str, Any] | None) -> bool:
     """
-    Follow contributing image branches, excluding idle previews, bypasses and mask-only inputs.
+    Hide graphics only for contributing visualization nodes directly in pipeline A.
 
-    A visualization hides native graphics across the composite. A later full, unmasked
-    replacement by an image feed restores them; partial replacements retain the base policy.
+    Other tabs supply footprint information only, even when their visualizations are blended
+    into A. A full unmasked image replacement restores graphics after an A visualization.
     """
     if document is None:
         return True
@@ -54,7 +54,7 @@ def measurement_graphics_visible(document: dict[str, Any] | None) -> bool:
             if item["bypass"]:
                 continue
             kind, params = item["type"], item["params"]
-            if kind == "custom":
+            if kind == "custom" and tab == "A":
                 feed &= image_feed(params["package"])
             elif kind == "transform":
                 full &= ((params["resize_mode"] == "resolution"
