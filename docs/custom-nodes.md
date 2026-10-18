@@ -206,6 +206,12 @@ inference sessions. No dependency installs or model downloads are added by this 
 
 ## Additional examples and builder skill
 
+[Thermal Surface](../examples/custom_nodes/Thermal%20Surface/README.md) replaces
+grayscale Raw input with a shaded 3D heat-height mesh using only NumPy/OpenCV.
+It includes view/detail/palette controls and an offline benchmark. Elevation is
+relative heat, not physical depth; the projected image no longer aligns with
+sensor measurement overlays. Select `examples/custom_nodes/Thermal Surface`.
+
 [Head Pose](../examples/custom_nodes/head-pose/README.md) preserves HFHPE's upstream
 repository as a pinned submodule and provides a separate portable detector/crop/pose
 overlay package. Select `examples/custom_nodes/head-pose/nodes/Head Pose`; its

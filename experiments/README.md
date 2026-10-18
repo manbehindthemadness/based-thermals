@@ -4,6 +4,18 @@ Run the model checks below explicitly from the repository root using the configu
 environment. They are outside pytest's normal `tests/` collection and do not access
 the camera.
 
+## Thermal Surface renderer (no external resources)
+
+```sh
+.venv/bin/python experiments/experiment_thermal_surface.py --frames 200 --output diagnostics/thermal-surface
+```
+
+Runs the actual portable Custom node on a synthetic heat image at three quality
+settings, reporting first-frame and warm median/p95 timings and optionally writing
+PNG previews. It uses existing NumPy/OpenCV dependencies, performs no downloads,
+and does not open hardware or modify preferences. See the
+[Thermal Surface README](../examples/custom_nodes/Thermal%20Surface/README.md).
+
 ## Optional visual ONNX weights
 
 ```sh
