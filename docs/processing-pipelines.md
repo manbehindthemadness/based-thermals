@@ -73,11 +73,17 @@ the hardware stack and every software tab, persist across restarts, and can
 still be exported as JSON.
 The bundled collection includes Detail Enhanced GPU Upscale, Detail Enhanced CPU
 Upscale, Redneck Combat, Redneck Combat GPU, Yautja, Yautja GPU, Reaper Night GPU,
-and Reaper Day GPU. All eight current saved configurations are captured as
+Reaper Day GPU, and Thermal Height Map. All nine saved configurations are captured as
 individual exports in `presets/` and included in the package defaults, so they are
 available without local preferences. Fresh Duo installations start with
 **Detail Enhanced CPU Upscale**; existing installations restore their last working
 pipeline. Other camera profiles retain their own capability-based startup behavior.
+**Thermal Height Map** embeds the Thermal Surface Custom package and its saved
+view controls, with processed-preview and raw inset branches. No module-folder
+import or model download is needed. Its surface elevation follows grayscale
+camera Preview intensity; it is relative visualization, not physical depth or
+a calibrated temperature axis. Scene rotation is saved at 90°; adjust it for
+your viewer orientation. See [the preset export](../presets/Thermal%20Height%20Map.pipeline.json).
 **Create new** starts a blank, unsaved pipeline: the hardware stack is empty,
 tab A contains only Source and Output, with no auxiliary tabs. It returns
 the editor to tab A and leaves saved presets unchanged.

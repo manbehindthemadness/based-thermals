@@ -6,6 +6,13 @@ orthographic camera, thermal colors, lighting, side walls and optional mesh edge
 It uses NumPy and OpenCV already included with the viewer: no GPU context, model,
 download, additional dependency or background worker is needed.
 
+For a ready-made layout, select the bundled **Thermal Height Map** pipeline preset.
+It embeds this package, saved view controls and processed-preview/raw insets;
+no module-folder import is required. That preset uses grayscale camera Preview
+intensity for elevation, with a 90° scene rotation tuned for a rotated viewer.
+The Raw-source setup below is an alternative when you want heights derived from
+the native temperature image; adjust Scene rotation for your viewer orientation.
+
 ## Use
 
 1. In the software pipeline, select **Source → Raw**. Keep the image grayscale

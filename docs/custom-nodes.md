@@ -211,6 +211,10 @@ grayscale Raw input with a shaded 3D heat-height mesh using only NumPy/OpenCV.
 It includes view/detail/palette controls and an offline benchmark. Elevation is
 relative heat, not physical depth; the projected image no longer aligns with
 sensor measurement overlays. Select `examples/custom_nodes/Thermal Surface`.
+The bundled **Thermal Height Map** pipeline preset embeds this package with saved
+camera/view controls and processed-preview/raw insets, so it can be selected
+directly without importing a module folder. Its main surface uses grayscale
+camera Preview intensity rather than a fixed radiometric range.
 
 [Head Pose](../examples/custom_nodes/head-pose/README.md) preserves HFHPE's upstream
 repository as a pinned submodule and provides a separate portable detector/crop/pose
