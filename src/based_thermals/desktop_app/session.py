@@ -14,6 +14,7 @@ from .controls import ControlsController
 from .environment import EnvironmentPresets
 from .maintenance import MaintenanceController
 from .markup import MarkupController
+from .markup_commands import MarkupCommands
 from .markup_edit import MarkupEditController
 from .markup_values import MarkupValuesController
 from .measurement_drawing import MeasurementDrawingController
@@ -31,6 +32,7 @@ class DesktopSession(
     ViewerController,
     MeasurementDrawingController,
     MarkupController,
+    MarkupCommands,
     MarkupEditController,
     MarkupValuesController,
     MaintenanceController,

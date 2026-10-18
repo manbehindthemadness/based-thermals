@@ -57,6 +57,9 @@ class ViewerController(SessionState):
             "status": self.status,
             "viewport_draw_ms": self.viewport_draw_ms,
             "captured_at": self.display_captured_at,
+            "markup_response": self.markup_response,
+            "markup_editable": not self.markup_locked(self.markup_target({})),
+            "markup_selected": self.markup_selection is not None,
         }
 
     def poll_viewer_commands(self: DesktopSession) -> bool:
@@ -114,6 +117,11 @@ class ViewerController(SessionState):
                             self.spot_drag.edit.pending_nudges.append(direction)
                 elif action == "viewer_metrics":
                     self.markup_metrics(command)
+                elif action == "markup_object":
+                    self.markup_command(command)
+                elif action == "markup_ack":
+                    if command.get("serial") == self.markup_response.get("serial"):
+                        self.markup_response = {}
                 elif isinstance(action, str) and action in keys:
                     self.viewer_keys.append(ord(keys[action]))
                 elif action == "key":
@@ -192,6 +200,7 @@ class ViewerController(SessionState):
             ("press", "left"): self.api.cv2.EVENT_LBUTTONDOWN,
             ("release", "left"): self.api.cv2.EVENT_LBUTTONUP,
             ("release", "right"): self.api.cv2.EVENT_RBUTTONUP,
+            ("double", "left"): self.api.cv2.EVENT_LBUTTONDOWN,
         }
         event = events.get((kind, button))
         if event is None:
@@ -206,6 +215,11 @@ class ViewerController(SessionState):
             return
         if not (-1 <= x <= 16384 and -1 <= y <= 16384 and 0 <= flags <= 63):
             return
+        if kind == "double" or kind == "release" and button == "right":
+            if self.markup_context_pointer(command):
+                return
+            if kind == "double":
+                command = {**command, "kind": "press"}
         if self.markup_pointer(command) or self.measurement_drawing_pointer(command):
             return
         if (

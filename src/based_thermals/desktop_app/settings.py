@@ -350,6 +350,7 @@ class SettingsController(SessionState):
             "pipeline": self.pipeline,
             "apple_acceleration": self.apple_capability,
             "markup_live": self.markup_live,
+            "markup_focus": self.markup_focus,
             "markup_measurements": self.spots.state(),
             "markup_selection": ({"node": self.markup_selection.node,
                                   "annotation": self.markup_selection.identity}

@@ -11,11 +11,12 @@ from collections.abc import Callable
 from time import monotonic, perf_counter
 
 from PySide6.QtCore import QEvent, Qt, QTimer
-from PySide6.QtGui import QCloseEvent, QImage, QKeyEvent, QResizeEvent
-from PySide6.QtWidgets import QHBoxLayout, QLabel, QMainWindow, QWidget
+from PySide6.QtGui import QCloseEvent, QCursor, QImage, QKeyEvent, QResizeEvent
+from PySide6.QtWidgets import QApplication, QHBoxLayout, QLabel, QMainWindow, QWidget
 
 from . import APP_NAME
 from .capture_window import run_window
+from .markup_ui.actions import ObjectActions
 from .viewer_panel import FRAME_CAPACITY
 from .viewer_ui.canvas import ImageCanvas
 from .viewer_ui.drawing_toolbar import DrawingToolbar
@@ -83,6 +84,14 @@ class ViewerWindow(QMainWindow):
         self.addToolBarBreak()
         self.addToolBar(self.drawing_toolbar)
         self._viewer_state: dict = {}
+        self._markup_target: dict = {}
+        self._markup_response = ""
+        self.markup_actions = ObjectActions(
+            self.canvas, self._markup_object,
+            lambda: (bool(self._viewer_state.get("markup_selected")),
+                     bool(self._viewer_state.get("markup_editable")) and not self.drawing_toolbar.active),
+            lambda: self.drawing_toolbar.active,
+        )
         self.orientation_dialog = OrientationDialog(self.send, self)
         self.setWindowTitle(APP_NAME)
         self.resize(1024, 800)
@@ -136,6 +145,38 @@ class ViewerWindow(QMainWindow):
                            "draw_ms": self._viewport_draw_ms, "total_ms": self._capture_to_paint_ms})
                 self._metrics_at = now
         self._update_status()
+
+    def _markup_object(self, operation: str, text: str) -> None:
+        """
+        Forward bounded object edits with the context menu's stable target identity.
+        """
+        self.send({"action": "markup_object", "operation": operation, "text": text,
+                   **self._markup_target})
+
+    def _markup_reply(self, response: object) -> None:
+        """
+        Apply each clipboard/menu response once while normal frame updates continue.
+        """
+        if not isinstance(response, dict):
+            return
+        serial = response.get("serial")
+        if not isinstance(serial, str) or serial == self._markup_response:
+            return
+        self._markup_response = serial
+        text = response.get("clipboard")
+        if isinstance(text, str) and len(text) <= 70000:
+            QApplication.clipboard().setText(text)
+        target = response.get("menu")
+        if isinstance(target, dict):
+            menu_target = dict(target)
+            self._markup_target = menu_target
+            self.markup_actions.popup(QCursor.pos())
+            assert self.markup_actions.menu is not None
+            # Hide first, then triggered actions run; clear the target on the next event-loop turn.
+            self.markup_actions.menu.aboutToHide.connect(
+                lambda: QTimer.singleShot(0, menu_target.clear)
+            )
+        self.send({"action": "markup_ack", "serial": serial})
 
     def _update_status(self) -> None:
         """
@@ -220,6 +261,7 @@ class ViewerWindow(QMainWindow):
                 self.send({"action": "frame_read", "serial": frame.get("serial")})
         if "unit" in state:
             self._viewer_state = state
+            self._markup_reply(state.get("markup_response", {}))
             self.toolbar.update_state(state)
             self.orientation_dialog.update_locks(state)
             drawing = state.get("measurement_drawing", {})

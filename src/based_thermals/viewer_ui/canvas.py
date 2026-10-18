@@ -121,6 +121,13 @@ class ImageCanvas(QWidget):
         """
         self._pointer(event, "release")
 
+    def mouseDoubleClickEvent(self, event: QMouseEvent) -> None:
+        """
+        Request annotation editing without starting a second drag gesture.
+        """
+        self._dragging = False
+        self._pointer(event, "double")
+
     def leaveEvent(self, event: object) -> None:
         """
         Hide the sampler when the pointer moves into controls or another window.

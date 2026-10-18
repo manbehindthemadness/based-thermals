@@ -84,6 +84,8 @@ class SessionState:
     markup_gesture: MarkupGesture = field(init=False)
     markup_frames: list[dict[str, Any]] = field(default_factory=list)
     markup_selection: MarkupSelection | None = None
+    markup_response: dict[str, Any] = field(default_factory=dict)
+    markup_focus: dict[str, Any] = field(default_factory=dict)
     markup_runtime: ReadoutRuntime = field(default_factory=ReadoutRuntime)
     markup_live: dict[str, Any] = field(default_factory=dict)
     maintenance_panel: MaintenancePanel = field(init=False)

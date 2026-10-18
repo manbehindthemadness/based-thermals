@@ -173,7 +173,18 @@ the camera image discards the drag. With the viewer image focused, arrow keys
 nudge the selected control—or the whole annotation—by one display-image pixel
 in the visible direction, including after mirrors/rotation. Text fields and the
 element list retain their normal keyboard behavior. Selection is temporary;
-committed geometry saves with the pipeline. Lock prevents both dragging and nudging.
+committed geometry saves with the pipeline. Lock prevents dragging, nudging and
+object copy/paste/delete actions.
+
+With the node unlocked, right-click an annotation or its element-list row for
+**Copy**, **Paste**, **Delete** or **Edit in Imaging…**. Use ⌘C/⌘V on macOS or
+Ctrl+C/Ctrl+V on Linux, and Delete or Backspace, with the viewer image or element
+list focused. Clipboard objects retain their text, variable bindings, geometry,
+styles and Z index; each paste creates a new identity with a small position offset.
+Paste targets the selected Markup node, or the last visible unlocked Markup node
+when no object is selected. Text fields keep their normal text clipboard shortcuts;
+Backspace still undoes while drawing. Double-click an unlocked annotation on the
+image to open Imaging, expand its owning tab/node and focus that element for editing.
 
 Each object has independent border, text and fill colors/opacities, plus border
 width, text size and optional fill. **Dynamic** uses the measurement overlay's

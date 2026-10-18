@@ -8,8 +8,9 @@ from copy import deepcopy
 from functools import partial
 from typing import TYPE_CHECKING, Any
 
-from PySide6.QtCore import QSignalBlocker, Qt
+from PySide6.QtCore import QPoint, QSignalBlocker, Qt
 from PySide6.QtWidgets import (
+    QApplication,
     QCheckBox,
     QComboBox,
     QDoubleSpinBox,
@@ -25,8 +26,10 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from ..markup.clipboard import encode, paste
 from ..markup.model import KINDS, TITLES, annotation, read_annotations, serialize
 from ..markup.variables import catalog
+from ..markup_ui.actions import ObjectActions
 from ..pipeline import software_tabs
 from .custom_choices import ColorPicker
 from .markup_text import ReadoutText, TableDialog
@@ -74,6 +77,14 @@ class MarkupControls(QWidget):
         self.objects.setMaximumHeight(200)
         self.objects.currentRowChanged.connect(self.select_object)
         self.objects.itemClicked.connect(lambda _item: self.select_object(self.objects.currentRow()))
+        self.object_actions = ObjectActions(
+            self.objects, self.object_action,
+            lambda: (self.selected_id() is not None,
+                     not self.editor.locked and not self.item["params"]["locked"] and not self.item["bypass"]),
+        )
+        self.objects.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.objects.customContextMenuRequested.connect(self.object_menu)
+        self.objects.itemDoubleClicked.connect(lambda _item: self.text.setFocus())
         layout.addWidget(self.objects)
         actions = QHBoxLayout()
         self.draw = QPushButton("Draw on image")
@@ -275,8 +286,41 @@ class MarkupControls(QWidget):
         """
         Remove only the selected annotation, retaining all other node state.
         """
-        if not self.editor.locked:
+        if not self.editor.locked and not self.item["params"]["locked"] and not self.item["bypass"]:
             self.save([item for item in self.items() if item["id"] != self.selected_id()])
+
+    def object_menu(self, position: QPoint) -> None:
+        """
+        Select the right-clicked row before offering object actions in the native menu.
+        """
+        entry = self.objects.itemAt(position)
+        if entry is not None:
+            self.objects.setCurrentItem(entry)
+        self.object_actions.popup(self.objects.viewport().mapToGlobal(position))
+
+    def object_action(self, operation: str, text: str) -> None:
+        """
+        Share portable objects with the viewer while leaving text-field clipboard behavior native.
+        """
+        if self.editor.locked or self.item["params"]["locked"] or self.item["bypass"]:
+            return
+        items = self.items()
+        selected = next((item for item in items if item["id"] == self.selected_id()), None)
+        if operation == "paste":
+            try:
+                added = paste(items, text)
+            except ValueError as exc:
+                QMessageBox.warning(self, "Markup", str(exc))
+                return
+            if self.save(items):
+                self.objects.setCurrentRow(self.index_of(added["id"]))
+        elif selected is not None:
+            if operation == "copy":
+                QApplication.clipboard().setText(encode(selected))
+            elif operation == "delete":
+                self.delete_object()
+            elif operation == "edit":
+                self.text.setFocus(Qt.FocusReason.OtherFocusReason)
 
     def shift_z_index(self, *, front: bool) -> None:
         """
@@ -350,7 +394,7 @@ class MarkupControls(QWidget):
         self.fields.setEnabled(selected is not None)
         self.add.setEnabled(not self.item["params"]["locked"] and len(items) < 128)
         self.draw.setEnabled(selected is not None and not self.item["params"]["locked"])
-        self.remove.setEnabled(selected is not None)
+        self.remove.setEnabled(selected is not None and not self.item["params"]["locked"])
         if selected is not None:
             if not self.z_index.hasFocus() and self.z_index.value() != selected["z_index"]:
                 self.z_index.setValue(selected["z_index"])

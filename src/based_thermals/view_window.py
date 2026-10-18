@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
 from .camera_backends.duo.hardware_controls import HARDWARE_CONTROLS, camera_operation_title
 from .capture_window import run_window
 from .environment_preset_ui import EnvironmentPresetControls
+from .pipeline_ui.markup_focus import focus_markup
 from .view_controls import (
     ControlRow,
     NoWheelCheckBox,
@@ -451,6 +452,7 @@ class ViewWindow(QWidget):
         from .pipeline_editor import PipelineEditor
         self._send_to_viewer = send
         self._settings_locked = False
+        self._markup_focus_serial = ""
         self._anchor_top_right = None
         self.setWindowTitle("Imaging")
         self._settings = QSettings(
@@ -645,6 +647,7 @@ class ViewWindow(QWidget):
         self.cancel_tone.setVisible(tone_busy)
         self.cancel_tone.setEnabled(tone_busy and not state.get("settings_locked", False))
         self.pipeline_editor.update_state(state, locked)
+        focus_markup(self, state.get("markup_focus"))
         self.environment_presets.update_state(state.get("environment_presets", {}), locked)
         from .hardware_ui import update_hardware_ui
 
