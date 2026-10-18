@@ -23,7 +23,7 @@ def annotation(kind: str) -> dict[str, Any]:
     """
     if kind not in KINDS:
         raise ValueError("Choose a Markup drawing tool")
-    return {
+    result: dict[str, Any] = {
         "id": uuid4().hex, "kind": kind, "points": [], "z_index": 0,
         "text": ("Label" if kind == "text" else "Text box" if kind == "textbox"
                  else "Name\tValue\nItem\t--" if kind == "table" else ""),
@@ -32,6 +32,9 @@ def annotation(kind: str) -> dict[str, Any]:
         "fill": kind in ("textbox", "table"), "fill_color": "#000000", "fill_opacity": 0.4,
         "text_color": "dynamic", "text_opacity": 1.0, "font_size": 16,
     }
+    if kind == "text":
+        result["text_offset"] = [0., 0.]
+    return result
 
 
 _FIELDS = frozenset(annotation("text"))
@@ -54,10 +57,17 @@ def read_annotations(text: str) -> tuple[dict[str, Any], ...]:
         raise ValueError("A Markup node supports up to 128 annotations")
     identities = set()
     for item in items:
-        if (not isinstance(item, dict) or not _FIELDS - {"z_index", "bindings"} <= set(item)
+        if (not isinstance(item, dict) or not _FIELDS - {"z_index", "bindings", "text_offset"} <= set(item)
                 or not set(item) <= _FIELDS):
             raise ValueError("Unknown or missing Markup annotation field")
         item.setdefault("z_index", 0)
+        offset = item.get("text_offset")
+        if "text_offset" in item and (
+            not isinstance(offset, list) or len(offset) != 2
+            or any(type(value) not in (int, float) or not -1e6 <= value <= 1e6
+                   or not math.isfinite(value) for value in offset)
+        ):
+            raise ValueError("Markup text offset must contain two finite bounded coordinates")
         bindings = item.setdefault("bindings", {})
         if (not isinstance(bindings, dict) or len(bindings) > 128
                 or any(not isinstance(key, str) or not 1 <= len(key) <= 160

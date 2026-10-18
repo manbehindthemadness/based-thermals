@@ -176,6 +176,12 @@ element list retain their normal keyboard behavior. Selection is temporary;
 committed geometry saves with the pipeline. Lock prevents dragging, nudging and
 object copy/paste/delete actions.
 
+Labels size themselves from their text and stay upright around a persistent center
+that follows the pipeline/viewer transform. Text changes resize around that center.
+Existing labels gain a saved `text_offset` from their first displayed layout without
+moving their existing points; new labels are centered at the placement point.
+Near image edges the box shifts inward to remain readable. Off-image anchors remain cropped.
+
 With the node unlocked, right-click an annotation or its element-list row for
 **Copy**, **Paste**, **Delete** or **Edit in Imaging…**. Use ⌘C/⌘V on macOS or
 Ctrl+C/Ctrl+V on Linux, and Delete or Backspace, with the viewer image or element

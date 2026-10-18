@@ -52,7 +52,7 @@ def masks_for(shape: tuple[int, int], item: dict[str, Any], matrix: tuple[float,
     """
     global _BYTES
     key = (shape, item["kind"], tuple(tuple(p) for p in item["points"]), item["text"],
-           item["font_size"], item["width"], matrix)
+           item["font_size"], item["width"], matrix, tuple(item.get("text_offset", ())))
     with _LOCK:
         cached = _CACHE.get(key)
         if cached is not None:
@@ -75,9 +75,44 @@ def masks_for(shape: tuple[int, int], item: dict[str, Any], matrix: tuple[float,
     return result
 
 
+def text_layout(item: dict[str, Any]) -> tuple[list[str], int, int]:
+    """
+    Measure content consistently for painting and legacy center-anchor initialization.
+    """
+    lines = item["text"].splitlines() or [""]
+    scale = item["font_size"] / 22
+    width = max(cv2.getTextSize(line, cv2.FONT_HERSHEY_SIMPLEX, scale, 1)[0][0] for line in lines)
+    return lines, width, max(1, round(item["font_size"] * 1.4))
+
+
+def label_bounds(shape: tuple[int, int], item: dict[str, Any], matrix: tuple[float, ...],
+                 size: tuple[int, int]) -> tuple[int, int, int, int]:
+    """
+    Rotate the label's persistent center while retaining upright, content-sized text.
+    """
+    height, width = shape
+    with np.errstate(divide="ignore", invalid="ignore"):
+        anchor = project(item["points"], matrix)[0] * (max(1, width - 1), max(1, height - 1))
+    if not np.isfinite(anchor).all():
+        return -65536, -65536, -65536, -65536
+    origin = np.rint(anchor)
+    if "text_offset" in item:
+        center = np.asarray(item["points"][0]) + item["text_offset"]
+        with np.errstate(divide="ignore", invalid="ignore"):
+            projected = project([center.tolist()], matrix)[0] * (max(1, width - 1), max(1, height - 1))
+        if not np.isfinite(projected).all():
+            return -65536, -65536, -65536, -65536
+        origin = np.rint(projected - np.asarray(size) / 2)
+    left, top = (int(value) for value in np.clip(origin, -65536, 65536))
+    if 0 <= anchor[0] < width and 0 <= anchor[1] < height:
+        left = min(max(0, left), max(0, width - size[0] - 1))
+        top = min(max(0, top), max(0, height - size[1] - 1))
+    return left, top, left + size[0], top + size[1]
+
+
 def rasterize(shape: tuple[int, int], item: dict[str, Any], matrix: tuple[float, ...]) -> Masks:
     """
-    Rasterize bounded display geometry and upright multiline text into a local mask rectangle.
+    Rasterize display geometry, keeping upright labels inside the image at visible anchors.
     """
     height, width = shape
     kind = item["kind"]
@@ -94,11 +129,11 @@ def rasterize(shape: tuple[int, int], item: dict[str, Any], matrix: tuple[float,
     left, top = mapped.min(axis=0)
     right, bottom = mapped.max(axis=0)
     scale = item["font_size"] / 22
-    lines = item["text"].splitlines() or [""]
-    text_width = max(cv2.getTextSize(line, cv2.FONT_HERSHEY_SIMPLEX, scale, 1)[0][0] for line in lines)
-    line_height = max(1, round(item["font_size"] * 1.4))
+    lines, text_width, line_height = text_layout(item)
     if kind == "text":
-        right, bottom = left + text_width + 12, top + line_height * len(lines) + 8
+        left, top, right, bottom = label_bounds(
+            shape, item, matrix, (text_width + 12, line_height * len(lines) + 8),
+        )
         mapped = np.array(((left, top), (right, top), (right, bottom), (left, bottom)), np.int32)
     padding = max(18, item["width"] + 4)
     x0, y0 = max(0, int(left) - padding), max(0, int(top) - padding)

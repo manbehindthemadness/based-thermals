@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from ..markup.anchors import center_offset
 from ..markup.editing import MarkupSelection, handles
 from ..markup.expressions import render_item
 from ..markup.model import read_annotations, serialize
@@ -249,3 +250,43 @@ class MarkupController(SessionState):
             if len(item["points"]) >= (1 if item["kind"] == "text" else 2):
                 draw_object(result, item, matrix)
         return result
+
+    def anchor_legacy_markup_labels(self: DesktopSession) -> None:
+        """
+        Preserve the first displayed layout of older labels and persist their rotation centers once.
+        """
+        contexts: dict[str, tuple[float, ...]] = {}
+        for entry in self.markup_frames:
+            contexts.setdefault(entry["node"], tuple(entry["matrix"]))
+        changed = False
+        for identity, matrix in contexts.items():
+            node = self.markup_node(identity)
+            if node is None:
+                continue
+            definitions = read_annotations(node["params"]["annotations"])
+            if not any(item["kind"] == "text" and item["points"] and "text_offset" not in item
+                       for item in definitions):
+                continue
+            if self.spots_state()["locked"]:
+                continue
+            items = deepcopy(list(definitions))
+            updated = False
+            for item in items:
+                if item["kind"] == "text" and item["points"] and "text_offset" not in item:
+                    rendered = render_item(item, self.markup_live)
+                    offset = center_offset(self.rendered.image.shape[:2], rendered, matrix)
+                    if offset is not None:
+                        item["text_offset"] = offset
+                        updated = True
+            if updated:
+                try:
+                    encoded = serialize(items)
+                except ValueError:
+                    # Keep near-limit legacy documents usable without raising during presentation.
+                    continue
+                node["params"]["annotations"] = encoded
+                changed = True
+        if changed:
+            self.renderer.set_pipeline(self.pipeline)
+            self.persist_settings()
+            self.view_panel.update(self.view_state())

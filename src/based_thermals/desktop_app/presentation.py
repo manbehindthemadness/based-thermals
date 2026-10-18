@@ -196,6 +196,7 @@ class PresentationController(SessionState):
             self.renderer.measurement_status = self.rendered.measurement_status
             self.renderer.request_measurement_restart()
         self.update_markup_values()
+        self.anchor_legacy_markup_labels()
         self.rendered = self.api.replace(self.rendered, image=self.draw_markup(self.rendered.image))
         self.diagnostics.measurements(self.rendered.measurement_status)
         self.diagnostics.stage("calibration_and_layout")
