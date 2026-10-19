@@ -53,7 +53,7 @@ References: [Qt graphics architecture](https://doc.qt.io/qt-6/topics-graphics.ht
 
 This separate **Custom** package compares the original Thermal Surface renderer
 with a compute-only Taichi rasterizer. It creates no windows, opens no camera,
-and adds no shared viewer backend, project dependency or preset. Taichi CPU is
+and adds no shared viewer backend or preset. Taichi CPU is
 selected by default, with OpenCV fallback when Taichi is unavailable. The existing
 Thermal Surface and bundled Thermal Height Map preset retain their rendering defaults.
 
@@ -183,7 +183,27 @@ returned nonzero lengths. Float16 is therefore not used for geometry arithmetic.
 Mixed float16 storage/float32 computation would require separate performance and
 image checks; no float16 speedup has been measured.
 
-## Optional isolated setup
+## Installation
+
+Normal project setup now installs the tested Taichi 1.7.4 automatically:
+
+```sh
+uv sync --dev
+```
+
+The dependency applies to CPython 3.12–3.13 on Apple Silicon macOS and x86-64
+Linux, matching the [published wheels](https://pypi.org/project/taichi/1.7.4/#files).
+Python 3.14+, Linux ARM and other environments retain OpenCV fallback without
+blocking application installation. GPU initialization and unsupported drivers
+can also fall back to OpenCV; installing the package does not guarantee a usable GPU.
+Restart an already running viewer after syncing.
+
+The dependency marker controls automatic installation only. It does not prevent
+the node from using a separately installed compatible Taichi build on Linux ARM
+or another excluded environment. Linux ARM has no official 1.7.4 PyPI wheel;
+source builds and their GPU backends have not been verified for this project.
+
+### Isolated runtime experiments
 
 From the repository root, using the configured Python 3.12 SDK and uv:
 
@@ -200,19 +220,10 @@ UV_CACHE_DIR=diagnostics/taichi-uv-cache uv pip install \
 This installs optional packages only under ignored diagnostics and reuses the
 project's NumPy/OpenCV. It does not modify `.venv`, `pyproject.toml` or `uv.lock`.
 The runner supplies that directory to disposable children through `PYTHONPATH`.
-To try the folder in the viewer later, its process also needs the optional package
-directory on `PYTHONPATH`; otherwise choosing Taichi produces OpenCV fallback.
-Alternatively, install it into the viewer's existing environment:
-
-```sh
-uv pip install --python .venv/bin/python taichi==1.7.4
-```
-
-Restart the viewer after installation. This optional local installation is not
-part of project dependencies; an exact `uv sync` may remove it, requiring the
-command again. The node needs a **Source → Raw** input before any color palette
-or visualization node. The missing-runtime fallback cannot correct colorized
-input and deliberately retains that validation error.
+This isolated setup is only for comparing runtime builds; the viewer normally
+uses the dependency installed by `uv sync`. The node needs a **Source → Raw**
+input before any color palette or visualization node. The missing-runtime fallback
+cannot correct colorized input and deliberately retains that validation error.
 
 Native GPU compilation must be allowed by the execution environment. The initial
 restricted Metal probe failed shader compilation; it passed with normal native
@@ -387,9 +398,9 @@ device initialization or network requests:
 .venv/bin/python -m pytest tests/test_taichi_surface_package.py tests/test_thermal_surface.py
 ```
 
-The evidence supports further dense-mesh experiments, including the Taichi CPU
-path. It does not justify making Taichi a required dependency or replacing the
-existing default renderer.
+Taichi is now a project dependency on environments with published compatible
+wheels. These measurements support the contained Custom-node renderer; the
+existing viewer renderer is retained.
 
 ## Full palette catalog
 

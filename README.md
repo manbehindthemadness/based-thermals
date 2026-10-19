@@ -38,6 +38,11 @@ Requirements: Python 3.12+, [uv](https://docs.astral.sh/uv/getting-started/insta
 and a supported host. Ubuntu also needs the libraries and camera udev rule in
 the [setup guide](docs/setup.md#ubuntu-2404-and-later). Install those first.
 
+Taichi 1.7.4 installs automatically for CPython 3.12–3.13 on Apple Silicon macOS
+and x86-64 Linux. Other environments keep the visualization's OpenCV fallback;
+the project's Python 3.12+ requirement is unchanged. See the
+[Thermal Surface setup](examples/custom_nodes/Thermal%20Surface%20Taichi/README.md#installation).
+
 ```sh
 git clone https://github.com/manbehindthemadness/based-thermals.git
 cd based-thermals

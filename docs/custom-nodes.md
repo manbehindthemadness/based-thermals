@@ -16,8 +16,10 @@ packages work through relative imports, such as `from .contrast import adjust_co
 Installed dependencies can be imported normally; the node does not install them.
 
 The separate [Thermal Surface Taichi experiment](../examples/custom_nodes/Thermal%20Surface%20Taichi/README.md)
-compares optional Taichi CPU/Metal rasterization with the original surface renderer.
-Its dependency setup, benchmarks and fallback remain within the Custom package;
+compares Taichi CPU/Metal rasterization with the original surface renderer.
+Taichi 1.7.4 is installed by normal project setup on CPython 3.12–3.13,
+Apple Silicon macOS and x86-64 Linux. Other environments retain OpenCV fallback.
+Its execution, benchmarks and fallback remain within the Custom package;
 Taichi CPU is selected by default with OpenCV fallback; no shared application backend is added.
 
 Additional CPU-only visualization packages are available:
