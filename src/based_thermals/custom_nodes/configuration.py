@@ -60,6 +60,11 @@ def validate_controls(controls: Any, values: dict[str, Any]) -> list[dict[str, A
         fields = {"key", "label", "type"}
         if kind in ("number", "integer"):
             fields |= {"min", "max", "step"}
+            if kind == "number" and "decimals" in control:
+                fields.add("decimals")
+                decimals = control["decimals"]
+                if type(decimals) is not int or not 0 <= decimals <= 9:
+                    raise ValueError(f"Custom decimal places must be an integer from 0 to 9: {key}")
         elif kind == "choice":
             fields.add("options")
         elif kind == "model" and "models" in control:

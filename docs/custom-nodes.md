@@ -15,6 +15,11 @@ The package's `__init__.py` must expose `process(image, config)`. Helpers and ne
 packages work through relative imports, such as `from .contrast import adjust_contrast`.
 Installed dependencies can be imported normally; the node does not install them.
 
+The separate [Thermal Surface Taichi experiment](../examples/custom_nodes/Thermal%20Surface%20Taichi/README.md)
+compares optional Taichi CPU/Metal rasterization with the original surface renderer.
+Its dependency setup, benchmarks and fallback remain within the Custom package;
+Taichi CPU is selected by default with OpenCV fallback; no shared application backend is added.
+
 Application helpers now use the `based_thermals` namespace. Older packages using
 `topdon_duo` imports must update those imports. For packages embedded in saved
 pipelines, reopen the updated module folder and save the pipeline to replace its
@@ -116,7 +121,12 @@ fit within 64 KiB. Generated controls honor pipeline locks, and JSON edits refre
 their displayed values. Controls update configuration; they do not invoke Python
 callbacks in the UI process.
 
-Unfinished text edits survive routine viewer updates and are included when saving
+Decimal `number` controls may include optional `decimals` (integer 0–9) to select
+their displayed/input precision; omitted values retain nine decimal places.
+The Thermal Surface Taichi example uses one decimal place. Numeric typing applies
+on Enter or focus loss, while arrow/step changes still apply immediately.
+
+Unfinished text and numeric edits survive routine viewer updates and are included when saving
 or exporting the pipeline. Explicit JSON/folder replacements supersede those drafts;
 locking the pipeline discards uncommitted drafts and prevents configuration writes.
 

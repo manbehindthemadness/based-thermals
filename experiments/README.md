@@ -55,6 +55,22 @@ PNG previews. It uses existing NumPy/OpenCV dependencies, performs no downloads,
 and does not open hardware or modify preferences. See the
 [Thermal Surface README](../examples/custom_nodes/Thermal%20Surface/README.md).
 
+## Optional Taichi Thermal Surface experiment
+
+The separate [Thermal Surface Taichi package](../examples/custom_nodes/Thermal%20Surface%20Taichi/README.md)
+documents isolated optional dependencies and measured CPU/Metal results. After its
+explicit setup, run a camera-free comparison using disposable backend processes:
+
+```sh
+.venv/bin/python experiments/experiment_taichi_surface.py --runtime diagnostics/taichi-runtime --frames 1000
+```
+
+Reports contain cold/warm median/p95 timings, raster differences, actual backend,
+RSS checkpoints, independent rotation checks, concurrent instances and reloads.
+Output PNGs and native logs remain under diagnostics. Native backend failures and
+timeouts return a nonzero status. No package installation, camera access, shared
+viewer backend changes or user-preference writes occur during the benchmark.
+
 ## Optional visual ONNX weights
 
 ```sh

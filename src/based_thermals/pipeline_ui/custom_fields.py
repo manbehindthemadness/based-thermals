@@ -34,6 +34,7 @@ class CustomFields(QWidget):
         self.changed = changed
         self.fields: dict[str, QWidget] = {}
         self.text_values: dict[str, str] = {}
+        self.numeric_values: dict[str, int | float] = {}
         layout = QFormLayout(self)
         for control in controls:
             key, kind = control["key"], control["type"]
@@ -62,10 +63,12 @@ class CustomFields(QWidget):
             else:
                 widget = QSpinBox() if kind == "integer" else QDoubleSpinBox()
                 if isinstance(widget, QDoubleSpinBox):
-                    widget.setDecimals(9)
+                    widget.setDecimals(control.get("decimals", 9))
                 widget.setRange(control["min"], control["max"])
                 widget.setSingleStep(control["step"])
                 widget.setValue(values[key])
+                widget.setKeyboardTracking(False)
+                self.numeric_values[key] = values[key]
                 # noinspection PyUnresolvedReferences
                 widget.valueChanged.connect(lambda value, name=key: changed(name, value))
             self.fields[key] = widget
@@ -106,5 +109,8 @@ class CustomFields(QWidget):
                     widget.setModified(False)
                 self.text_values[key] = values[key]
             elif isinstance(widget, (QSpinBox, QDoubleSpinBox)):
-                widget.setValue(values[key])
+                if (not preserve_pending or not widget.hasFocus()
+                        or values[key] != self.numeric_values[key]):
+                    widget.setValue(values[key])
+                self.numeric_values[key] = values[key]
             blocker.unblock()
