@@ -59,8 +59,8 @@ Thermal Surface and bundled Thermal Height Map preset retain their rendering def
 
 Select Source **Raw**, then load this folder with **Custom → Open module folder…**.
 The experimental renderer dropdown selects OpenCV, Taichi CPU, Metal, Vulkan or
-CUDA. All other controls have the original meaning. Only Apple M4 Metal and ARM
-CPU execution have been measured; CUDA/Vulkan are unverified experiment choices.
+CUDA. All other controls have the original meaning. Apple M4 Metal/ARM CPU and
+NVIDIA GB10 Linux ARM64 CPU/Vulkan execution have been measured; CUDA is unverified.
 This is relative display-brightness elevation, not physical depth or calibrated
 temperature data. `OUTPUT_KIND="visualization"` preserves normal A-only hiding
 of measurement graphics, without disabling sampling or Markup readouts.
@@ -185,23 +185,42 @@ image checks; no float16 speedup has been measured.
 
 ## Installation
 
-Normal project setup now installs the tested Taichi 1.7.4 automatically:
+Normal project setup installs the viewer dependencies:
 
 ```sh
 uv sync --dev
 ```
 
-The dependency applies to CPython 3.12–3.13 on Apple Silicon macOS and x86-64
-Linux, matching the [published wheels](https://pypi.org/project/taichi/1.7.4/#files).
-Python 3.14+, Linux ARM and other environments retain OpenCV fallback without
-blocking application installation. GPU initialization and unsupported drivers
-can also fall back to OpenCV; installing the package does not guarantee a usable GPU.
-Restart an already running viewer after syncing.
+Viewer startup separately installs optional Taichi 1.7.4 into an application cache
+on CPython 3.12–3.13 Apple Silicon macOS and x86-64 Linux, matching the
+[published wheels](https://pypi.org/project/taichi/1.7.4/#files). Taichi is absent
+from `pyproject.toml` and `uv.lock`; normal exact `uv sync` cannot remove the cached
+runtime. Python 3.14+ and unsupported/offline environments retain OpenCV fallback.
+GPU initialization can also fall back to OpenCV. See
+[runtime setup](../../../docs/taichi-runtime-setup.md) for retry and offline controls.
 
-The dependency marker controls automatic installation only. It does not prevent
-the node from using a separately installed compatible Taichi build on Linux ARM
-or another excluded environment. Linux ARM has no official 1.7.4 PyPI wheel;
-source builds and their GPU backends have not been verified for this project.
+Linux ARM has no official 1.7.4 PyPI wheel and never automatically compiles Taichi;
+use the [Taichi build skill](../../../.agents/skills/build-taichi/SKILL.md) for an
+opt-in ARM64 CPU + Vulkan source installation:
+
+```sh
+.venv/bin/python .agents/skills/build-taichi/scripts/build_taichi.py
+```
+
+Run that command from the project root after installing the native prerequisites
+listed in the skill. The helper builds a wheel, verifies a hardware Vulkan kernel
+in staging, and registers it in the separate cache with a verified CPU backend.
+Choose **Taichi CPU** or **Taichi Vulkan** after restarting the viewer. CPU support
+is required for compatibility; unavailable Vulkan never prevents CPU registration.
+OpenCV remains an independent CPU fallback. The build omits CUDA.
+Ordinary `uv sync` preserves this runtime. Wheel, source provenance and native logs
+stay in `diagnostics/taichi-cpu-vulkan-build/`; the active runtime lives in the user cache.
+
+On 2026-10-19, the patched LLVM source build passed real CPU/Vulkan kernels and the
+camera-free surface experiment on Ubuntu 24.04 ARM64,
+CPython 3.12.3 and NVIDIA GB10 (driver 580.173.02). See the
+[measured scope](../../../.agents/skills/build-taichi/references/build-notes.md#measured-scope-2026-10-19)
+for provenance, the ARM atomics fix and the remaining CUDA build limitation.
 
 ### Isolated runtime experiments
 

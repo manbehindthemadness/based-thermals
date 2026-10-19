@@ -2,7 +2,7 @@
 
 [Documentation home](../README.md) · [Custom pipeline nodes](custom-nodes.md)
 
-The repository includes three skills under `.agents/skills/`. They are instructions
+The repository includes four skills under `.agents/skills/`. They are instructions
 and supporting resources for a coding agent working on this project. They are
 separate from runtime Custom nodes: you do not load a SKILL.md into the viewer,
 and you do not need Codex to use Capture, Imaging or Measurements.
@@ -65,6 +65,28 @@ whether the target machine is available. A new chip name is not proof that a new
 backend/wheel is needed. The skill distinguishes published compatibility, package
 resolution, actual GPU execution and useful speedup; unavailable hardware remains
 explicitly unverified.
+
+## Build Taichi on Linux ARM64
+
+[$build-taichi](../.agents/skills/build-taichi/SKILL.md) compiles the pinned Taichi
+release with Vulkan support, verifies a real GPU kernel in staging, and installs
+a reusable wheel into the application's separate runtime cache. It includes LLVM
+CPU support for compatibility and Vulkan for GPU rendering. On Ubuntu 24.04 the
+helper can extract LLVM/Clang 15 locally without sudo; a CUDA toolkit is unnecessary.
+
+```text
+Use $build-taichi to build and install Taichi with Vulkan on this ARM64 Linux host.
+Verify the Thermal Surface Taichi node and retain the wheel for offline reinstall.
+```
+
+To run the helper directly from the project root:
+
+```sh
+.venv/bin/python .agents/skills/build-taichi/scripts/build_taichi.py
+```
+
+See the skill's [build notes](../.agents/skills/build-taichi/references/build-notes.md)
+for prerequisites and limitations. The registered runtime survives ordinary `uv sync`.
 
 ## Research another thermal camera
 

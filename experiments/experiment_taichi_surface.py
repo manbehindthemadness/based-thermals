@@ -280,6 +280,10 @@ def main() -> int:
             report = {"ok": False, "backend": args.child, "error": f"{type(exc).__name__}: {exc}"}
         (args.output / f"{args.child}.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
         return 0 if report["ok"] else 1
+    if not args.runtime:
+        from based_thermals.runtime_setup.taichi import ensure_runtime
+
+        ensure_runtime(download=False)
     reports = []
     for backend in args.backends:
         environment = dict(os.environ)

@@ -1,5 +1,5 @@
 """
-Provision and activate verified ONNX runtimes before acquisition or worker startup.
+Provision and activate verified optional native runtimes before acquisition or worker startup.
 """
 
 from __future__ import annotations
@@ -212,10 +212,13 @@ def ensure_runtime(*, retry: bool = False) -> None:
     Repair supported runtimes before camera access, with offline and native failure fallback.
     """
     if os.environ.get("BASED_THERMALS_RUNTIME_SETUP") == "0":
-        LOG.info("Automatic ONNX Runtime setup disabled")
+        LOG.info("Automatic native runtime setup disabled")
         return
     if sys.platform not in {"darwin", "linux"}:
         return
+    from .taichi import ensure_runtime as ensure_taichi
+
+    ensure_taichi(retry=retry)
     if "onnxruntime" in sys.modules:
         LOG.warning("ONNX Runtime already imported; restart the application to run runtime setup")
         return

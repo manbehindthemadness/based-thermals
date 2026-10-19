@@ -165,6 +165,10 @@ def main() -> int:
     args.output = args.output.resolve()
     args.output.mkdir(parents=True, exist_ok=True)
     report: dict[str, Any]
+    if not args.child:
+        from based_thermals.runtime_setup.taichi import ensure_runtime
+
+        ensure_runtime(download=False)
     if args.child:
         try:
             report = child(args)

@@ -5,6 +5,11 @@ before creating a camera or starting acquisition. Help, version and web USB diag
 do not install packages. Setup also runs on later launches, so a dependency sync does
 not permanently remove GPU support.
 
+The same startup entry point also prepares [optional Taichi](taichi-runtime-setup.md)
+in its own cache family. Taichi has independent platform selection and failure
+fallback; its setup runs even when ONNX Runtime is already available. The global
+setup-disable switch below disables both runtime families.
+
 The application sets `ORT_DISABLE_TELEMETRY=1` before importing ONNX Runtime.
 Its probes, processing workers and Custom nodes inherit this opt-out, which
 disables the runtime's telemetry uploader, events and persistent device identifier

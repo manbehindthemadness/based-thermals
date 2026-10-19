@@ -1,0 +1,4 @@
+interface:
+  display_name: "Build Taichi for ARM Linux"
+  short_description: "Build Taichi with CPU fallback and Vulkan on ARM64"
+  default_prompt: "Use $build-taichi to build and register Taichi with CPU fallback and Vulkan for this project."

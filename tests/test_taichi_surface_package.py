@@ -411,6 +411,8 @@ def test_runtime_is_shared_without_resetting_other_nodes(monkeypatch: Any) -> No
         config.arch = values["arch"]
 
     ti = SimpleNamespace(cpu="cpu", metal="metal", ERROR="error", init=initialize,
+                         _lib=SimpleNamespace(core=SimpleNamespace(
+                             get_llvm_target_support=lambda: "15.0.7")),
                          lang=SimpleNamespace(impl=SimpleNamespace(
                              get_runtime=lambda: runtime, current_cfg=lambda: config)))
     library = object()
@@ -439,6 +441,34 @@ def test_runtime_is_shared_without_resetting_other_nodes(monkeypatch: Any) -> No
         with pytest.raises(RuntimeError, match="runtime changed"):
             raster.service("Taichi CPU")
         assert len(calls) == 1
+    finally:
+        processor.close()
+
+
+@pytest.mark.parametrize("requested", ["Taichi CPU", "Taichi CUDA"])
+def test_vulkan_only_build_uses_cpu_opencv_without_native_llvm_error(
+    monkeypatch: Any, caplog: Any, requested: str,
+) -> None:
+    """Keep CPU output and saved intent when an older GPU-only package lacks LLVM."""
+    processor, item, module = package()
+    raster = sys.modules[module.__package__ + ".raster"]
+    initialize = []
+    ti = SimpleNamespace(
+        _lib=SimpleNamespace(core=SimpleNamespace(get_llvm_target_support=lambda: "targets unsupported")),
+        init=lambda **kwargs: initialize.append(kwargs),
+    )
+    monkeypatch.setitem(vars(raster), "importlib", SimpleNamespace(import_module=lambda name: ti))
+    execution(item, requested)
+    try:
+        for _ in range(2):
+            result = processor.apply(np.full((24, 32, 3), 120, np.float32), item)
+            assert result.shape[2] == 3 and np.isfinite(result).all()
+        assert initialize == []
+        assert raster._REGISTRY not in vars(ti)
+        assert module._renderer.effective_execution == "OpenCV"
+        assert "LLVM-enabled Taichi build" in module._renderer.fallback_reason
+        assert json.loads(item["params"]["config"])["execution"] == requested
+        assert sum("Thermal Surface using OpenCV" in r.message for r in caplog.records) == 1
     finally:
         processor.close()
 

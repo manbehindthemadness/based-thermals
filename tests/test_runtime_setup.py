@@ -19,6 +19,12 @@ from based_thermals.runtime_setup import install as installer
 from based_thermals.runtime_setup import probes
 
 
+@pytest.fixture(autouse=True)
+def no_live_taichi_setup(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep independent optional native setup out of the ONNX provisioning tests."""
+    monkeypatch.setattr("based_thermals.runtime_setup.taichi.ensure_runtime", Mock(return_value=False))
+
+
 @pytest.fixture
 def isolated(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> SimpleNamespace:
     """

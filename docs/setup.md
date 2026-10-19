@@ -56,6 +56,14 @@ In other guides, commands beginning with `uv` assume it is on PATH; substitute
 `.venv/bin/uv` when you installed it only inside this environment.
 For those environment-local `sync` commands, also include `--inexact` to retain uv.
 
+Optional Taichi is installed by viewer startup on Apple Silicon macOS and x86-64
+Linux, outside the uv environment. Linux ARM64 users can enable its Vulkan renderer
+with the [Taichi build skill/helper](../.agents/skills/build-taichi/SKILL.md) after
+creating the environment. That build includes LLVM CPU support and optional Vulkan;
+the helper can extract LLVM/Clang 15 locally on Ubuntu 24.04 without sudo.
+Both cached installations survive normal `uv sync`;
+Taichi itself no longer requires `--inexact`. See [Taichi setup](taichi-runtime-setup.md).
+
 Install the included rule once to give the active local desktop user access to
 the Duo without running the application as root:
 
