@@ -7,6 +7,8 @@ from typing import Any
 import cv2
 import numpy as np
 
+from based_thermals.custom_nodes.visualization import palette_lut
+
 from .geometry import Geometry
 from .settings import Settings
 
@@ -15,11 +17,7 @@ def palette(name: str) -> np.ndarray:
     """
     Construct a BGR color ramp without loading assets or initializing a GPU runtime.
     """
-    ramp = np.arange(256, dtype=np.uint8).reshape(-1, 1)
-    if name == "Grayscale":
-        return np.repeat(ramp, 3, axis=1)
-    mode = cv2.COLORMAP_INFERNO if name == "Inferno" else cv2.COLORMAP_TURBO
-    colors = cv2.applyColorMap(ramp, mode)[:, 0]
+    colors = palette_lut(name)
     return colors
 
 

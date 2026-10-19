@@ -55,7 +55,7 @@ This separate **Custom** package compares the original Thermal Surface renderer
 with a compute-only Taichi rasterizer. It creates no windows, opens no camera,
 and adds no shared viewer backend, project dependency or preset. Taichi CPU is
 selected by default, with OpenCV fallback when Taichi is unavailable. The existing
-Thermal Surface and bundled Thermal Height Map preset are unchanged.
+Thermal Surface and bundled Thermal Height Map preset retain their rendering defaults.
 
 Select Source **Raw**, then load this folder with **Custom → Open module folder…**.
 The experimental renderer dropdown selects OpenCV, Taichi CPU, Metal, Vulkan or
@@ -390,3 +390,19 @@ device initialization or network requests:
 The evidence supports further dense-mesh experiments, including the Taichi CPU
 path. It does not justify making Taichi a required dependency or replacing the
 existing default renderer.
+
+## Full palette catalog
+
+All software pipeline palettes are now available in both geometry paths and
+OpenCV/Taichi rasterizers, including White/Black hot and the legacy Grayscale
+alias. Camera-style entries marked **(approx.)** use the pipeline's software
+approximations, not exact hardware LUTs. They share the same 256×3 BGR ramp through
+`based_thermals.custom_nodes.visualization.palette_lut`; palette selection does
+not initialize a device. Existing defaults and saved palette values are unchanged.
+Reopen this folder and save the pipeline to update an older embedded package;
+opening a folder loads its defaults.
+
+Camera-free verification on 2026-10-19 rendered all 22 choices on native Taichi CPU
+with both NumPy and Taichi geometry, without fallback. OpenCV tests cover all five
+visualization packages; this palette update was not separately run on Metal,
+Vulkan, CUDA or Linux hardware.

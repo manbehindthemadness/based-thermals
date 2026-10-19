@@ -36,6 +36,10 @@ Scene rotation for your display orientation. Sensor measurement overlays are
 automatically hidden when the surface node is directly in pipeline A; sampling,
 graphs and Markup variables remain active. See the [Thermal Surface example](../examples/custom_nodes/Thermal%20Surface/README.md).
 
+On 2026-10-19 its embedded source and palette dropdown were refreshed to include
+all software pipeline palettes, with camera-style approximations labeled explicitly.
+Its saved configuration, layout and other nodes were preserved.
+
 Exports retain saved node identities, expansion and bypass states, hardware
 controls, every software branch, and model/backend settings. Bundled presets use
 collapsed nodes throughout; processing settings and bypass states match the exports.

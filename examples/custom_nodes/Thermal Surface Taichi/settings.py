@@ -8,6 +8,8 @@ import math
 from dataclasses import dataclass
 from typing import Any
 
+from based_thermals.custom_nodes.visualization import palette_names
+
 
 # noinspection DuplicatedCode
 def number(config: dict[str, Any], key: str, default: float, low: float, high: float) -> float:
@@ -73,7 +75,7 @@ class Settings:
             int(detail), number(config, "yaw", 80, -180, 180),
             number(config, "tilt", 45, 15, 85), number(config, "height", 0.7, 0, 2),
             number(config, "smoothing", 3, 0, 3),
-            choice(config, "palette", "Turbo", ("Inferno", "Turbo", "Grayscale")),
+            choice(config, "palette", "Turbo", palette_names()),
             choice(config, "normalization", "Source range", ("Source range", "Auto contrast")),
             int(choice(config, "resolution", "1280", ("384", "640", "960", "1280", "1600",
                                                      "1920", "2304", "2560", "3840", "4096"))),

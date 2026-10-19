@@ -4,6 +4,7 @@ Visualization outputs hide sensor graphics while retaining native samples and Ma
 
 import json
 from copy import deepcopy
+from pathlib import Path
 from unittest.mock import Mock
 
 import numpy as np
@@ -55,7 +56,8 @@ def test_metadata_and_saved_height_map_snapshots_need_no_import_or_preference_re
     source = package["__init__.py"]
     assert embedded_metadata(source)["OUTPUT_KIND"] == '"visualization"'
     assert not measurement_graphics_visible(preset)
-    package["__init__.py"] = source.replace('OUTPUT_KIND = "visualization"\n\n', '')
+    legacy = Path(__file__).with_name("fixtures") / "thermal_surface_legacy.py.txt"
+    package["__init__.py"] = legacy.read_text(encoding="utf-8")
     custom["params"].update(name="Renamed saved node", package=json.dumps(package))
     saved = deepcopy(preset)
     assert not measurement_graphics_visible(preset) and preset == saved

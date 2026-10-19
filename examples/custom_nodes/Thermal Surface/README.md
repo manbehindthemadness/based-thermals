@@ -51,7 +51,7 @@ background; normally use the node's own palette field instead.
 | Zoom | Magnify around the fitted scene center, 0.1×–5×; default 1×. |
 | Height exaggeration | Relative height, 0–2. Zero produces a flat plane. |
 | Surface smoothing | Gaussian smoothing on the small sampled grid, in grid cells; zero disables it. |
-| Thermal palette | Inferno, Turbo or Grayscale. |
+| Thermal palette | All pipeline palettes and the Grayscale alias; camera-style approximations are labeled. |
 | Height range | Source range retains input 0–255 scaling; Auto contrast stretches sampled 1st–99th percentiles per frame. |
 | Output long edge | 384, 640 or 960 pixels. Aspect follows the input, with a minimum short edge of 32. |
 | Show mesh edges | Add visible triangle borders; disabled by default for speed. |
@@ -122,3 +122,13 @@ Tests cover portable save/export, known projection geometry, changing heights,
 cache isolation/replacement, flat/tiny/portrait inputs, invalid configuration,
 colored-input rejection, and real offscreen editor interactions through refresh,
 rebuild, export and locks.
+
+## Full palette catalog
+
+The palette dropdown now includes every software pipeline palette, plus the
+legacy Grayscale alias. Camera-style entries marked **(approx.)** use the same
+software approximations as the palette node, not exact hardware LUTs. Existing
+Inferno/Turbo/Grayscale values and defaults remain compatible. Updated packages
+use `based_thermals.custom_nodes.visualization.palette_lut`; no GPU is initialized
+by palette selection. Reopen this folder and save the pipeline to replace an
+older embedded package; opening a folder loads its defaults.

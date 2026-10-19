@@ -1,0 +1,11 @@
+thermal_surface_legacy.py.txt is the original released Thermal Surface root source.
+Captured from examples/custom_nodes/Thermal Surface/__init__.py at commit
+31a6ba1d02e3014f946a3c76bf4b5c901322d6ea, removing only the later
+OUTPUT_KIND = "visualization" declaration and its following blank line. The result
+matches the independently recorded compatibility hash in
+src/based_thermals/pipeline_model/measurement_graphics.py:
+SHA-256 57615dbc88132f8757594bc9ed82c7246866e7cc7e431f70dd70f09d2a7b57e3
+
+This immutable source is parsed, never imported or executed. It tests legacy
+snapshot recognition independently of future changes to current bundled examples.
+Do not regenerate it from the current example when editing controls or palettes.

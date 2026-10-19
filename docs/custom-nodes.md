@@ -20,6 +20,49 @@ compares optional Taichi CPU/Metal rasterization with the original surface rende
 Its dependency setup, benchmarks and fallback remain within the Custom package;
 Taichi CPU is selected by default with OpenCV fallback; no shared application backend is added.
 
+Additional CPU-only visualization packages are available:
+
+- [Thermal Contours](../examples/custom_nodes/Thermal%20Contours/README.md): relative-heat
+  contour lines and filled bands, aligned with the camera image.
+- [Thermal Shaded Relief](../examples/custom_nodes/Thermal%20Shaded%20Relief/README.md):
+  directional hillshading with editable light, exaggeration and mix.
+- [Thermal History](../examples/custom_nodes/Thermal%20History/README.md): a bounded
+  waterfall surface of row/column profiles over processed frames.
+
+These packages and both Thermal Surface examples expose all pipeline palettes,
+including explicitly approximate camera-style ramps and the legacy Grayscale alias.
+The application helper `based_thermals.custom_nodes.visualization` provides
+`palette_names()` and an immutable 256×3 BGR `palette_lut(name)`, using the same
+colorization as the software palette node. The updated packages require an
+application version containing this helper. Older embedded packages retain their
+old controls until their module folder is reopened and the pipeline saved again.
+
+For camera-free synthetic previews and CPU timings, run from the repository root:
+
+```sh
+uv run experiments/experiment_thermal_visualizations.py --frames 120
+```
+
+Outputs go to ignored `diagnostics/thermal-visualizations/`: a contact sheet,
+individual PNGs, history MP4 and warm/cold timing JSON. No network, camera or
+optional runtime is used. These visualizations consume display brightness rather
+than calibrated temperatures; use measurement/Markup variables for temperature readouts.
+
+Camera-free CPU measurements on the development Mac, 2026-10-19, with 120 changing
+256×192 synthetic inputs and each node's defaults (history output 1280×960):
+
+| Node | First callback | Warm median | Warm p95 |
+| --- | ---: | ---: | ---: |
+| Thermal Contours | 53.82 ms | 2.99 ms | 4.05 ms |
+| Thermal Shaded Relief | 4.02 ms | 2.20 ms | 4.62 ms |
+| Thermal History | 11.78 ms | 13.26 ms | 21.93 ms |
+
+Warm samples begin after 64 frames, when the default history ring is full.
+First contour use includes importing the shared contrast compositor. Timings
+include Custom runtime copies/output validation, exclude preview encoding and
+viewer painting, and overlapped IDE inspection; they are indicative local CPU
+measurements, not live-camera, Linux or whole-application FPS claims.
+
 Application helpers now use the `based_thermals` namespace. Older packages using
 `topdon_duo` imports must update those imports. For packages embedded in saved
 pipelines, reopen the updated module folder and save the pipeline to replace its

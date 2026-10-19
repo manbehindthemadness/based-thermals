@@ -6,7 +6,11 @@ import math
 from dataclasses import dataclass
 from typing import Any
 
+from based_thermals.custom_nodes.visualization import palette_names
 
+
+# The Taichi comparison embeds this baseline; portable snapshots cannot import sibling folders.
+# noinspection DuplicatedCode
 def number(config: dict[str, Any], key: str, default: float, low: float, high: float) -> float:
     """
     Require a finite number in the renderer's supported range.
@@ -18,6 +22,7 @@ def number(config: dict[str, Any], key: str, default: float, low: float, high: f
     return float(value)
 
 
+# noinspection DuplicatedCode
 def choice(config: dict[str, Any], key: str, default: str, options: tuple[str, ...]) -> str:
     """
     Reject unsupported choices before allocating render buffers.
@@ -63,7 +68,7 @@ class Settings:
             int(detail), number(config, "yaw", -35, -180, 180),
             number(config, "tilt", 50, 15, 85), number(config, "height", 0.7, 0, 2),
             number(config, "smoothing", 0.8, 0, 3),
-            choice(config, "palette", "Inferno", ("Inferno", "Turbo", "Grayscale")),
+            choice(config, "palette", "Inferno", palette_names()),
             choice(config, "normalization", "Source range", ("Source range", "Auto contrast")),
             int(choice(config, "resolution", "640", ("384", "640", "960"))), wireframe,
             number(config, "scene_rotation", 0, -180, 180),
