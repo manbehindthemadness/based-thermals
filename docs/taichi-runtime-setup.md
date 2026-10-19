@@ -78,9 +78,15 @@ Register an already compiled wheel without rebuilding:
   --arch cpu
 ```
 
-Registration and startup verify CPU execution so GPU/driver availability cannot
+New builds register with CPU verification so GPU/driver availability cannot
 disable CPU compatibility. Choose **Taichi CPU** (the node default) or **Taichi Vulkan**
-after restarting the viewer; OpenCV remains an independent CPU fallback. This build
+after restarting the viewer; OpenCV remains an independent CPU fallback.
+Automatic cache activation tries CPU first. A legacy GPU-only cache may still
+activate after its recorded backend passes verification; it continues to require
+a rebuild for Taichi CPU support.
+An explicit `--arch vulkan` request must pass Vulkan verification even for a
+previously CPU-verified cache, and explicit `--arch cpu` never substitutes GPU proof.
+This build
 omits CUDA. Older Vulkan-only builds must be rebuilt to enable Taichi CPU; selecting
 CPU in an old build now gives an upgrade instruction before native initialization.
 Existing camera-free Taichi surface

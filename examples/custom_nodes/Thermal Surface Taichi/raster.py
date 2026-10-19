@@ -40,16 +40,18 @@ def service(execution: str) -> Any:
     """
     os.environ.setdefault("TI_SKIP_VERSION_CHECK", "ON")
     ti = importlib.import_module("taichi")
+    # Taichi 1.7.4 exposes LLVM build support only through its native extension.
+    # noinspection PyProtectedMember
     if (EXECUTIONS[execution] in {"cpu", "cuda"}
             and ti._lib.core.get_llvm_target_support() == "targets unsupported"):
         raise RuntimeError(
             f"{execution} needs an LLVM-enabled Taichi build. Rebuild with the build-taichi "
             "helper for CPU + Vulkan support, or select OpenCV for CPU rendering."
         )
-    state = ti.__dict__.setdefault(_REGISTRY, SimpleNamespace(lock=RLock(), library=None))
+    state: Any = ti.__dict__.setdefault(_REGISTRY, SimpleNamespace(lock=RLock(), library=None))
     with state.lock:
         requested = getattr(ti, EXECUTIONS[execution])
-        runtime = ti.lang.impl.get_runtime()
+        runtime: Any = ti.lang.impl.get_runtime()
         digest = kernel_digest()
         if state.library is None:
             if runtime.prog is None:

@@ -1,4 +1,6 @@
-"""Build pinned Taichi for Linux ARM64 and register a verified wheel in the runtime cache."""
+"""
+Build pinned Taichi for Linux ARM64 and register a verified wheel in the runtime cache.
+"""
 
 import argparse
 import hashlib
@@ -8,7 +10,9 @@ import platform
 import re
 import shutil
 import subprocess
+from collections.abc import Sequence
 from pathlib import Path
+from typing import Any
 
 COMMIT = "b4b956fdaa67fd3e198527fd607053ecb9bf4aa2"
 REPO = "https://github.com/taichi-dev/taichi.git"
@@ -18,7 +22,12 @@ BUILD_REQUIREMENTS = (
 )
 
 
-def run(command, *, cwd=None, env=None, log=None, timeout=600):
+def run(command: Sequence[str | Path], *, cwd: Path | None = None,
+        env: dict[str, str] | None = None, log: Path | None = None,
+        timeout: int = 600) -> None:
+    """
+    Run one bounded build command and optionally retain combined diagnostic output.
+    """
     print("Running:", " ".join(map(str, command)), flush=True)
     if log:
         print(f"Log: {log}", flush=True)
@@ -29,8 +38,11 @@ def run(command, *, cwd=None, env=None, log=None, timeout=600):
         subprocess.run(list(map(str, command)), cwd=cwd, env=env, check=True, timeout=timeout)
 
 
-def llvm_environment(work, env, prefix=None):
-    """Use matching LLVM/Clang 15; Ubuntu can extract its native packages without sudo."""
+def llvm_environment(work: Path, env: dict[str, str],
+                     prefix: Path | None = None) -> dict[str, str]:
+    """
+    Use matching LLVM/Clang 15; Ubuntu can extract its native packages without sudo.
+    """
     if prefix is None and Path("/usr/lib/llvm-15/bin/clang").is_file():
         prefix = Path("/usr/lib/llvm-15")
     if prefix is None:
@@ -75,32 +87,53 @@ def llvm_environment(work, env, prefix=None):
     return env
 
 
-def patch_source(source):
-    """Apply only the recorded AArch64 runtime-bitcode fix, permitting clean incremental rebuilds."""
+def patch_source(source: Path) -> str:
+    """
+    Apply only the recorded AArch64 runtime-bitcode fix, permitting clean incremental rebuilds.
+    """
     patch = Path(__file__).resolve().parents[1] / "assets/arm64-no-outline-atomics.patch"
     diff = subprocess.check_output(["git", "diff", "HEAD", "--", ".", ":(exclude)external"],
                                    cwd=source, text=True)
     # Hash abbreviation depends on the caller's Git configuration; compare patch content.
-    def content(text):
-        return [line for line in text.splitlines() if not line.startswith("index ")]
+    def content(text: str) -> list[str]:
+        """
+        Ignore Git's configurable object-name abbreviation when comparing patch text.
+        """
+        lines = [line for line in text.splitlines() if not line.startswith("index ")]
+        return lines
 
     if content(diff) != content(patch.read_text()):
         if diff.strip():
             raise RuntimeError("Source has unrelated tracked edits; use a clean checkout")
         run(["git", "apply", "--check", patch], cwd=source)
         run(["git", "apply", patch], cwd=source)
-    return hashlib.sha256(patch.read_bytes()).hexdigest()
+    digest = hashlib.sha256(patch.read_bytes()).hexdigest()
+    return digest
 
 
-def verify_backends(python, work):
-    """Require CPU correctness; a missing or crashing GPU must not prevent CPU registration."""
+def verification_ok(path: Path) -> bool:
+    """
+    Treat missing or malformed replies as failed verification.
+    """
+    try:
+        result = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    verified = isinstance(result, dict) and result.get("ok") is True
+    return verified
+
+
+def verify_backends(python: Path, work: Path) -> tuple[list[str], str | None]:
+    """
+    Require CPU correctness; a missing or crashing GPU must not prevent CPU registration.
+    """
     verifier = Path(__file__).with_name("verify_taichi.py").absolute()
     # No build-time loader overrides in runtime verification: prove the wheel stands alone.
     output = work / "verify-cpu.json"
     output.unlink(missing_ok=True)
     run([python, verifier, "--arch", "cpu", "--output", output],
         log=work / "verify-cpu.log", timeout=120)
-    if not json.loads(output.read_text()).get("ok"):
+    if not verification_ok(output):
         raise RuntimeError("CPU fallback verification failed")
     verified = ["cpu"]
     output = work / "verify-vulkan.json"
@@ -116,13 +149,17 @@ def verify_backends(python, work):
     devices = re.findall(r'Vulkan Device "([^"]+)" supports Vulkan', log)
     hardware = bool(devices) and not any(word in devices[-1].lower()
                                         for word in ("llvmpipe", "lavapipe", "swiftshader", "software"))
-    if (vulkan_completed and output.is_file()
-            and json.loads(output.read_text()).get("ok") and hardware):
+    if vulkan_completed and verification_ok(output) and hardware:
         verified.append("vulkan")
-    return verified, devices[-1] if "vulkan" in verified else None
+    device = devices[-1] if "vulkan" in verified else None
+    result = verified, device
+    return result
 
 
-def main():
+def main() -> None:
+    """
+    Build the pinned native wheel, require CPU verification and optionally register it.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--project", type=Path, default=Path.cwd())
     parser.add_argument("--python", type=Path, help="Target venv Python; defaults to PROJECT/.venv/bin/python")
@@ -146,8 +183,8 @@ def main():
             or facts["impl"] != "CPython" or facts["machine"] not in ("aarch64", "arm64")):
         parser.error("Target must be a native ARM64 CPython 3.12/3.13 virtual environment")
     uv = shutil.which("uv")
-    if not uv:
-        parser.error("uv must be installed and on PATH")
+    if uv is None:
+        raise RuntimeError("uv must be installed and on PATH")
     work = (args.build_dir or project / "diagnostics/taichi-cpu-vulkan-build").resolve()
     work.mkdir(parents=True, exist_ok=True)
     env = llvm_environment(work, dict(os.environ), args.llvm_dir)
@@ -196,7 +233,7 @@ def main():
     run([uv, "venv", "--clear", "--python", python, stage])
     run([uv, "pip", "install", "--python", stage / "bin/python", wheel])
     verified, device = verify_backends(stage / "bin/python", work)
-    manifest = {"source": REPO, "commit": COMMIT, "wheel": str(wheel),
+    manifest: dict[str, Any] = {"source": REPO, "commit": COMMIT, "wheel": str(wheel),
                 "sha256": hashlib.sha256(wheel.read_bytes()).hexdigest(),
                 "host": platform.platform(), "verified_arches": verified,
                 "vulkan_device": device,

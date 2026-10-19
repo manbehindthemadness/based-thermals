@@ -1,4 +1,6 @@
-"""Provision optional Taichi outside uv's project environment, including local ARM wheels."""
+"""
+Provision optional Taichi outside uv's project environment, including local ARM wheels.
+"""
 
 from __future__ import annotations
 
@@ -16,7 +18,7 @@ import sys
 import tempfile
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from . import RETRY_SECONDS, cache_root, read_state, write_state
 from .install import find_uv
@@ -28,29 +30,40 @@ ARCHES = {"cpu", "vulkan", "metal", "cuda"}
 
 
 def supported_python() -> bool:
-    """Keep unsupported Python ABIs out of automatic package resolution."""
-    return (sys.implementation.name == "cpython" and (3, 12) <= sys.version_info[:2] < (3, 14)
-            and sys.platform in {"darwin", "linux"})
+    """
+    Keep unsupported Python ABIs out of automatic package resolution.
+    """
+    supported = (sys.implementation.name == "cpython" and (3, 12) <= sys.version_info[:2] < (3, 14)
+                 and sys.platform in {"darwin", "linux"})
+    return supported
 
 
 def wheel_host() -> bool:
-    """Use published wheels on Apple Silicon macOS and Linux x86-64 only."""
+    """
+    Use published wheels on Apple Silicon macOS and Linux x86-64 only.
+    """
     machine = platform.machine().lower()
-    return supported_python() and (
+    supported = supported_python() and (
         sys.platform == "darwin" and machine in {"arm64", "aarch64"}
         or sys.platform == "linux" and machine in {"x86_64", "amd64"}
     )
+    return supported
 
 
 def root_path() -> Path:
-    """Isolate native builds by package version, interpreter ABI, platform and architecture."""
-    return cache_root() / (
+    """
+    Isolate native builds by package version, interpreter ABI, platform and architecture.
+    """
+    root = cache_root() / (
         f"taichi-v1-{VERSION}-{sys.implementation.cache_tag}-{sys.platform}-{platform.machine()}"
     )
+    return root
 
 
 def environment(path: Path | None = None) -> dict[str, str]:
-    """Select Taichi without discarding the independently selected ONNX Runtime."""
+    """
+    Select Taichi without discarding the independently selected ONNX Runtime.
+    """
     env = dict(os.environ)
     previous = env.pop(PATH_VARIABLE, None)
     entries = [p for p in env.get("PYTHONPATH", "").split(os.pathsep) if p and p != previous]
@@ -62,9 +75,11 @@ def environment(path: Path | None = None) -> dict[str, str]:
 
 
 def activate(path: Path) -> None:
-    """Pass the cache to native imports, subprocesses and spawned workers."""
+    """
+    Pass the cache to native imports, subprocesses and spawned workers.
+    """
     previous = os.environ.get(PATH_VARIABLE)
-    if previous in sys.path:
+    if previous and previous in sys.path:
         sys.path.remove(previous)
     selected = str(path)
     if selected in sys.path:
@@ -75,7 +90,9 @@ def activate(path: Path) -> None:
 
 
 def query(path: Path, arch: str) -> dict[str, Any]:
-    """Keep native crashes, teardown noise and timeouts outside the viewer process."""
+    """
+    Keep native crashes, teardown noise and timeouts outside the viewer process.
+    """
     try:
         with tempfile.TemporaryDirectory(prefix="based-thermals-taichi-probe-") as directory:
             response = Path(directory) / "result.json"
@@ -108,7 +125,9 @@ def query(path: Path, arch: str) -> dict[str, Any]:
 
 
 def install(path: Path, wheel: Path | None) -> bool:
-    """Install wheels and Python helpers without shadowing the project's NumPy or native packages."""
+    """
+    Install wheels and Python helpers without shadowing the project's NumPy or native packages.
+    """
     uv = find_uv()
     if uv is None:
         LOG.warning("Optional Taichi setup needs uv on PATH or beside the interpreter")
@@ -134,22 +153,27 @@ def install(path: Path, wheel: Path | None) -> bool:
 
 
 def cached_path(root: Path, state: dict[str, Any]) -> Path | None:
-    """Reject incomplete, symlinked or escaping cache generations."""
+    """
+    Reject incomplete, symlinked or escaping cache generations.
+    """
     name = state.get("ready")
     if (not isinstance(name, str) or not name.startswith("runtime-")
             or Path(name).name != name or not isinstance(state.get("arch"), str)
             or state["arch"] not in ARCHES):
         return None
-    path = root / name
+    path = root / cast(str, name)
     if path.is_symlink() or not (path / "taichi/__init__.py").is_file():
         return None
     return path
 
 
 def prepare(*, retry: bool = False, wheel: Path | None = None,
-            arch: str = "cpu", download: bool = True) -> bool:
-    """Verify before atomic publication, preserving an existing generation on failed replacement."""
+            arch: str | None = None, download: bool = True) -> bool:
+    """
+    Verify before atomic publication, preserving an existing generation on failed replacement.
+    """
     root = root_path()
+    verification_arch = "cpu" if arch is None else arch
     if not root.exists() and wheel is None and (not download or not wheel_host()):
         return False
     root.mkdir(parents=True, exist_ok=True)
@@ -165,14 +189,20 @@ def prepare(*, retry: bool = False, wheel: Path | None = None,
         state_file = root / "state.json"
         state = read_state(state_file)
         cached = cached_path(root, state)
-        if wheel is None and cached is not None and query(cached, state["arch"]).get("available") is True:
-            activate(cached)
-            return True
+        if wheel is None and cached is not None:
+            result = query(cached, verification_arch)
+            if (not result.get("available") and arch is None
+                    and state["arch"] != verification_arch):
+                result = query(cached, state["arch"])
+            if result.get("available"):
+                activate(cached)
+                return True
         # Linux ARM startup never downloads or compiles; only explicit local wheels can create a cache.
         if wheel is None and (not download or not wheel_host()):
             return False
         failed = state.get("failed_at")
-        if (wheel is None and not retry and type(failed) in {int, float}
+        if (wheel is None and not retry and isinstance(failed, (int, float))
+                and not isinstance(failed, bool)
                 and 0 <= time.time() - failed < RETRY_SECONDS):
             return False
         stage = Path(tempfile.mkdtemp(prefix="staging-", dir=root))
@@ -181,11 +211,11 @@ def prepare(*, retry: bool = False, wheel: Path | None = None,
             LOG.info("Setting up optional Taichi %s", VERSION)
             if not install(stage, wheel):
                 return False
-            result = query(stage, arch)
-            if result.get("available") is not True:
+            result = query(stage, verification_arch)
+            if not result.get("available"):
                 LOG.warning("Optional Taichi verification failed: %s", result.get("reason"))
                 return False
-            provenance = {"arch": arch, "version": VERSION}
+            provenance = {"arch": verification_arch, "version": VERSION}
             if wheel:
                 provenance.update(wheel=str(wheel), sha256=hashlib.sha256(wheel.read_bytes()).hexdigest())
             else:
@@ -205,8 +235,10 @@ def prepare(*, retry: bool = False, wheel: Path | None = None,
 
 
 def ensure_runtime(*, retry: bool = False, wheel: Path | None = None,
-                   arch: str = "cpu", download: bool = True) -> bool:
-    """Activate a verified cache before Custom workers; unsupported/offline hosts retain OpenCV."""
+                   arch: str | None = None, download: bool = True) -> bool:
+    """
+    Activate a verified cache before Custom workers; unsupported/offline hosts retain OpenCV.
+    """
     if (os.environ.get("BASED_THERMALS_RUNTIME_SETUP") == "0"
             or os.environ.get("BASED_THERMALS_TAICHI_SETUP") == "0" or not supported_python()):
         return False
@@ -214,14 +246,17 @@ def ensure_runtime(*, retry: bool = False, wheel: Path | None = None,
         LOG.info("Taichi already imported; restart before selecting a cached runtime")
         return False
     try:
-        return prepare(retry=retry, wheel=wheel, arch=arch, download=download)
+        available = prepare(retry=retry, wheel=wheel, arch=arch, download=download)
+        return available
     except (OSError, ValueError) as exc:
         LOG.warning("Optional Taichi setup unavailable: %s", exc)
         return False
 
 
 def main() -> int:
-    """Install or register a wheel without opening a camera or preparing ONNX Runtime."""
+    """
+    Install or register a wheel without opening a camera or preparing ONNX Runtime.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--retry", action="store_true", help="Ignore the failed-download cooldown")
     parser.add_argument("--wheel", type=Path, help="Register an optional locally compiled wheel")

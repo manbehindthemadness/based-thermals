@@ -1,9 +1,12 @@
-"""Run a real kernel with fallback disabled; execute from a file for Taichi's AST reader."""
+"""
+Run a real kernel with fallback disabled; execute from a file for Taichi's AST reader.
+"""
 
 import argparse
 import json
 import os
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 os.environ.setdefault("TI_SKIP_VERSION_CHECK", "ON")
 
@@ -11,7 +14,12 @@ import numpy as np
 import taichi as ti
 
 
-def main():
+# This verifier runs without the application installed; retain the matching numerical probe.
+# noinspection DuplicatedCode
+def main() -> None:
+    """
+    Verify an exact backend numerically and publish a standalone build-check response.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--arch", choices=("vulkan", "cpu", "cuda"), default="vulkan")
     parser.add_argument("--output", type=Path, required=True)
@@ -23,11 +31,21 @@ def main():
     if actual != arch:
         raise RuntimeError(f"Requested {arch}, got {actual}")
 
+    if TYPE_CHECKING:
+        FloatArray = np.ndarray
+    else:
+        # Taichi consumes this runtime type when decorating the kernel.
+        # noinspection PyUnusedLocal
+        FloatArray = ti.types.ndarray(dtype=ti.f32, ndim=1)
+
+    # Taichi 1.7.4 rejects -> None on void kernels; these are runtime DSL annotations.
     @ti.kernel
-    def transform(x: ti.types.ndarray(dtype=ti.f32, ndim=1),
-                  y: ti.types.ndarray(dtype=ti.f32, ndim=1)):
-        for i in x:
-            y[i] = x[i] * 2.0 + 1.0
+    def transform(inputs: FloatArray, outputs: FloatArray):
+        """
+        Exercise native arithmetic over a host array with independently checked output.
+        """
+        for i in inputs:
+            outputs[i] = inputs[i] * 2.0 + 1.0
 
     x = np.arange(4096, dtype=np.float32)
     y = np.empty_like(x)

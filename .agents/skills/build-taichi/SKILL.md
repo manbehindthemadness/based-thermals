@@ -48,6 +48,7 @@ CUDA remains disabled because of a separate upstream ARM compilation failure.
 
 A fresh verification venv runs a numerical CPU kernel before any GPU experiment.
 CPU failure stops registration. Vulkan failure is recorded and retains CPU support;
+missing, malformed and non-boolean verification replies also count as failures.
 common software Vulkan devices do not count as verified GPU execution. Registration
 uses `--arch cpu`, so startup/cache reuse also works without a Vulkan driver.
 The node retains its independent OpenCV CPU fallback if Taichi is unavailable.
