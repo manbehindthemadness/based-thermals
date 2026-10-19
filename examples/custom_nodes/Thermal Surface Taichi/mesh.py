@@ -27,7 +27,7 @@ def heat_values(image: np.ndarray, geometry: Geometry, settings: Settings) -> Fl
         heat = (heat - low) / max(float(high - low), 1.0)
     else:
         heat = heat / 255.0
-    result = np.clip(heat, 0, 1).ravel()
+    result = np.asarray(np.clip(heat, 0, 1), np.float32).ravel()
     return result
 
 

@@ -67,6 +67,14 @@ explicit setup, run a camera-free comparison using disposable backend processes:
 
 Reports contain cold/warm median/p95 timings, raster differences, actual backend,
 RSS checkpoints, independent rotation checks, concurrent instances and reloads.
+The runner's `--geometry NumPy` / `--geometry Taichi` compares host geometry with
+compiled projection and lighting inside the same Custom package; its README
+provides paired commands and measured results.
+`experiment_taichi_regression.py` compares a committed package against the working
+copy in fresh alternating native processes, profiles individual stages, and
+checks NumPy performance after switching geometry methods. It accepts an optional
+`--config` JSON file to reproduce the viewer's actual settings without modifying
+preferences. Its report includes source hashes, host load, memory and timings.
 Output PNGs and native logs remain under diagnostics. Native backend failures and
 timeouts return a nonzero status. No package installation, camera access, shared
 viewer backend changes or user-preference writes occur during the benchmark.

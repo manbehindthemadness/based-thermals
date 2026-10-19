@@ -15,6 +15,7 @@ OUTPUT_KIND = "visualization"
 CONFIG_JSON = {
     "defaults": {
         "execution": "Taichi CPU",
+        "geometry_method": "NumPy",
         "detail": 256, "yaw": 80, "tilt": 45, "height": 0.7,
         "smoothing": 3, "palette": "Turbo", "normalization": "Source range",
         "resolution": "1280", "wireframe": False,
@@ -24,6 +25,8 @@ CONFIG_JSON = {
     "controls": [
         {"key": "execution", "label": "Experimental renderer", "type": "choice",
          "options": ["OpenCV", "Taichi CPU", "Taichi Metal", "Taichi Vulkan", "Taichi CUDA"]},
+        {"key": "geometry_method", "label": "Geometry + lighting", "type": "choice",
+         "options": ["NumPy", "Taichi"]},
         {"key": "detail", "label": "Mesh detail", "type": "integer",
          "min": 12, "max": 512, "step": 4},
         {"key": "yaw", "label": "View rotation", "type": "number",

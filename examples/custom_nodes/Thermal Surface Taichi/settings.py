@@ -54,6 +54,7 @@ class Settings:
     offset_y: float
     zoom: float
     antialiasing: str
+    geometry_method: str
 
     @classmethod
     def read(cls, config: dict[str, Any]) -> "Settings":
@@ -81,5 +82,6 @@ class Settings:
             number(config, "offset_x", -14, -100, 100),
             number(config, "offset_y", 0, -100, 100), number(config, "zoom", 1, 0.1, 5),
             choice(config, "antialiasing", "2x supersampling", ("Off", "2x supersampling")),
+            choice(config, "geometry_method", "NumPy", ("NumPy", "Taichi")),
         )
         return result

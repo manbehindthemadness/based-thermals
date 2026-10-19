@@ -13,6 +13,10 @@ from typing import Any
 
 import numpy as np
 
+from .geometry import Geometry
+from .native_mesh import NativeMesh
+from .settings import Settings
+
 LOG = logging.getLogger(__name__)
 EXECUTIONS = {"Taichi CPU": "cpu", "Taichi Metal": "metal",
               "Taichi Vulkan": "vulkan", "Taichi CUDA": "cuda"}
@@ -23,7 +27,8 @@ def kernel_digest() -> str:
     """
     Detect source updates without retaining a new kernel library for every reload.
     """
-    source = Path(__file__).with_name("kernels.py").read_bytes()
+    source = b"".join(Path(__file__).with_name(name).read_bytes()
+                      for name in ("kernels.py", "mesh_kernels.py"))
     return sha256(source).hexdigest()
 
 
@@ -69,26 +74,55 @@ class Rasterizer:
         self.state = service(execution)
         self.owners: Any = None
         self.shape: tuple[int, int] | None = None
+        self.mesh: NativeMesh | None = None
 
     def render(self, floor: np.ndarray, triangles: np.ndarray,
                colors: np.ndarray, wireframe: bool, sample_scale: int = 1) -> np.ndarray:
         """
         Include host/device copies and completed readback in the synchronous callback duration.
         """
+        with self.state.lock:
+            output = self._render(floor, np.ascontiguousarray(triangles, np.float32),
+                                  np.ascontiguousarray(colors, np.uint8), wireframe, sample_scale)
+        return output
+
+    def render_mesh(self, heat: np.ndarray, geometry: Geometry, settings: Settings,
+                    palette: np.ndarray, sample_scale: int) -> np.ndarray:
+        """
+        Run compiled geometry and rasterization under the shared runtime lock with node-owned buffers.
+        """
         ti = importlib.import_module("taichi")
-        height, width = floor.shape[:2]
-        sample_shape = height * sample_scale, width * sample_scale
         with self.state.lock:
             if ti.lang.impl.get_runtime().prog is not self.state.program:
                 raise RuntimeError("Taichi runtime was reset outside this node")
-            if self.shape != sample_shape:
-                self.owners = ti.ndarray(dtype=ti.i32, shape=sample_shape)
-                self.shape = sample_shape
-            self.owners.fill(-1)
-            output = np.empty_like(floor)
-            self.state.library.rasterize(np.ascontiguousarray(triangles, np.float32),
-                                         self.owners, int(wireframe), sample_scale)
-            self.state.library.resolve(self.owners, np.ascontiguousarray(colors, np.uint8),
-                                       np.ascontiguousarray(floor), output, sample_scale)
-            ti.sync()
+            library = getattr(self.state, "mesh_library", None)
+            if library is None:
+                library = importlib.import_module(".mesh_kernels", __package__)
+                self.state.mesh_library = library
+            mesh = self.mesh
+            if mesh is None or mesh.geometry is not geometry:
+                mesh = NativeMesh(ti, geometry, settings)
+                self.mesh = mesh
+            triangles, colors = mesh.prepare(library, heat, palette, settings.antialiasing == "Off")
+            output = self._render(geometry.floor, triangles, colors, settings.wireframe, sample_scale)
+        return output
+
+    def _render(self, floor: np.ndarray, triangles: Any, colors: Any,
+                wireframe: bool, sample_scale: int) -> np.ndarray:
+        """
+        Rasterize host or resident mesh arrays while the caller holds the runtime lock.
+        """
+        ti = importlib.import_module("taichi")
+        if ti.lang.impl.get_runtime().prog is not self.state.program:
+            raise RuntimeError("Taichi runtime was reset outside this node")
+        height, width = floor.shape[:2]
+        sample_shape = height * sample_scale, width * sample_scale
+        if self.shape != sample_shape:
+            self.owners = ti.ndarray(dtype=ti.i32, shape=sample_shape)
+            self.shape = sample_shape
+        self.owners.fill(-1)
+        output = np.empty_like(floor)
+        self.state.library.rasterize(triangles, self.owners, int(wireframe), sample_scale)
+        self.state.library.resolve(self.owners, colors, np.ascontiguousarray(floor), output, sample_scale)
+        ti.sync()
         return output

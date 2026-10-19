@@ -8,6 +8,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
+import cv2
 import numpy as np
 import pytest
 from support.pipeline import raw_pipeline
@@ -42,7 +43,7 @@ def test_screenshot_defaults_match_embedded_and_standalone_settings() -> None:
                 "scene_rotation": 90, "offset_x": -14, "offset_y": 0, "zoom": 1,
                 "height": .7, "smoothing": 3, "palette": "Turbo",
                 "normalization": "Source range", "resolution": "1280", "wireframe": False,
-                "antialiasing": "2x supersampling"}
+                "antialiasing": "2x supersampling", "geometry_method": "NumPy"}
     assert json.loads(load_folder(FOLDER)["config"]) == expected
     processor, _, module = package()
     try:
@@ -59,6 +60,58 @@ def execution(item: dict[str, Any], value: object) -> None:
     Change only this node's current optional execution setting.
     """
     item["params"]["config"] = json.dumps({**json.loads(item["params"]["config"]), "execution": value})
+
+
+def test_compiled_geometry_skips_numpy_lighting_and_reuses_native_renderer(monkeypatch: Any) -> None:
+    """
+    Select the compiled mesh path without running optional kernels or duplicating NumPy face work.
+    """
+    processor, item, module = package()
+    calls = []
+    instances = []
+
+    class NativeRaster:
+        """
+        Model the compiled mesh boundary while retaining independent renderer identity.
+        """
+
+        def __init__(self, requested: str) -> None:
+            """
+            Record one selected native backend without importing Taichi.
+            """
+            instances.append(requested)
+
+        @staticmethod
+        def render_mesh(heat: np.ndarray, geometry: Any, settings: Any,
+                        palette: np.ndarray, sample_scale: int) -> np.ndarray:
+            """
+            Accept scalar heat and cached camera geometry instead of host-generated triangles.
+            """
+            calls.append((heat.copy(), geometry, settings, palette.copy(), sample_scale))
+            return geometry.floor.copy()
+
+    def forbidden(*_args: Any) -> None:
+        """
+        Fail if the selected compiled route still computes NumPy face geometry.
+        """
+        raise AssertionError("compiled geometry must not call NumPy lighting")
+
+    try:
+        surface = sys.modules[module.__package__ + ".surface"]
+        monkeypatch.setitem(vars(surface), "Rasterizer", NativeRaster)
+        monkeypatch.setitem(vars(surface), "lit_triangles", forbidden)
+        execution(item, "Taichi CPU")
+        config = {**json.loads(item["params"]["config"]), "geometry_method": "Taichi"}
+        item["params"]["config"] = json.dumps(config)
+        restored = validate_pipeline(json.loads(json.dumps(raw_pipeline(item))))["software"][2]
+        for _ in range(2):
+            processor.apply(np.full((24, 32, 3), 120, np.float32), restored)
+        assert instances == ["Taichi CPU"] and len(calls) == 2
+        assert calls[0][1] is calls[1][1] and calls[0][0].ndim == 1
+        assert calls[0][4] == 2 and calls[0][3].shape == (256, 3)
+        assert module._renderer.effective_execution == "Taichi CPU"
+    finally:
+        processor.close()
 
 
 @pytest.mark.parametrize("detail", [128, 256, 512])
@@ -166,9 +219,46 @@ def test_portable_opencv_matches_original_and_never_imports_taichi(monkeypatch: 
         processor.close()
 
 
+def test_auto_contrast_keeps_mesh_float32_with_reference_image_agreement() -> None:
+    """
+    Prevent percentile normalization from doubling mesh storage while preserving display fidelity.
+    """
+    processor, item, module = package()
+    image = np.linspace(15, 235, 24 * 32, dtype=np.float32).reshape(24, 32)
+    image[0, 0], image[-1, -1] = 0, 255
+    image = np.repeat(image[:, :, None], 3, axis=2)
+    original = image.copy()
+    config = {**json.loads(item["params"]["config"]), "detail": 40, "resolution": "640",
+              "normalization": "Auto contrast", "antialiasing": "Off"}
+    item["params"]["config"] = json.dumps(config)
+    try:
+        result = processor.apply(image, item)
+        namespace = module.__package__
+        mesh = sys.modules[namespace + ".mesh"]
+        settings = sys.modules[namespace + ".settings"].Settings.read(config)
+        geometry = module._renderer.geometry
+        heat = mesh.heat_values(image, geometry, settings)
+        resized = cv2.resize(image, (geometry.columns, geometry.rows), interpolation=cv2.INTER_AREA)
+        smoothed = cv2.GaussianBlur(resized[:, :, 0], (0, 0), settings.smoothing,
+                                    borderType=cv2.BORDER_REPLICATE)
+        low, high = np.percentile(smoothed, (1, 99))
+        expected = np.clip((smoothed - low) / max(float(high - low), 1), 0, 1).ravel()
+        assert heat.dtype == np.float32 and expected.dtype == np.float64
+        np.testing.assert_allclose(heat, expected, rtol=2e-7, atol=2e-7)
+        reference = node("software", "custom", **load_folder(ROOT / "examples/custom_nodes/Thermal Surface"))
+        reference["params"]["config"] = json.dumps(config)
+        reference_image = processor.apply(image, reference)
+        difference = np.abs(result - reference_image)
+        assert difference.mean() < .05
+        np.testing.assert_array_equal(image, original)
+    finally:
+        processor.close()
+
+
 @pytest.mark.parametrize("failure", [ModuleNotFoundError("taichi"), RuntimeError("device unavailable")])
+@pytest.mark.parametrize("geometry_method", ["NumPy", "Taichi"])
 def test_optional_failure_returns_original_surface_once_per_selection(
-    monkeypatch: Any, caplog: Any, failure: Exception,
+    monkeypatch: Any, caplog: Any, failure: Exception, geometry_method: str,
 ) -> None:
     """
     Retain valid output and explain a fallback without retrying native initialization every frame.
@@ -177,6 +267,8 @@ def test_optional_failure_returns_original_surface_once_per_selection(
     attempts = []
     image = np.full((24, 32, 3), 120, np.float32)
     try:
+        config = {**json.loads(item["params"]["config"]), "geometry_method": geometry_method}
+        item["params"]["config"] = json.dumps(config)
         expected = processor.apply(image, item)
 
         def unavailable(requested: str) -> None:
@@ -204,7 +296,10 @@ def test_optional_failure_returns_original_surface_once_per_selection(
         processor.close()
 
 
-def test_kernel_failure_after_success_updates_effective_backend_and_stops_retrying(monkeypatch: Any) -> None:
+@pytest.mark.parametrize("geometry_method", ["NumPy", "Taichi"])
+def test_kernel_failure_after_success_updates_effective_backend_and_stops_retrying(
+    monkeypatch: Any, geometry_method: str,
+) -> None:
     """
     Handle compiler-specific exceptions after a successful frame without misreporting CPU fallback.
     """
@@ -238,7 +333,18 @@ def test_kernel_failure_after_success_updates_effective_backend_and_stops_retryi
                 raise CompilerFailure("shader compile failed")
             return floor.copy()
 
+        @staticmethod
+        def render_mesh(_heat: np.ndarray, geometry: Any, settings: Any,
+                        colors: np.ndarray, sample_scale: int) -> np.ndarray:
+            """
+            Exercise the same catchable failure after selecting compiled geometry.
+            """
+            return NativeRaster.render(geometry.floor, np.empty(0), colors,
+                                       settings.wireframe, sample_scale)
+
     try:
+        config = {**json.loads(item["params"]["config"]), "geometry_method": geometry_method}
+        item["params"]["config"] = json.dumps(config)
         expected = processor.apply(image, item)
         monkeypatch.setitem(vars(sys.modules[module.__package__ + ".surface"]), "Rasterizer", NativeRaster)
         execution(item, "Taichi CPU")
@@ -373,6 +479,14 @@ for _ in range(8):
     app.processEvents()
 QTest.keyClick(combo, Qt.Key.Key_Return)
 assert combo.currentText() == "Taichi Metal"
+geometry = controls.fields.fields["geometry_method"]
+geometry.showPopup()
+QTest.keyClick(geometry, Qt.Key.Key_End)
+for _ in range(8):
+    editor.update_state({"pipeline": deepcopy(editor.document), "pipeline_serial": editor.edit_serial}, False)
+    app.processEvents()
+QTest.keyClick(geometry, Qt.Key.Key_Return)
+assert geometry.currentText() == "Taichi"
 resolution = controls.fields.fields["resolution"]
 resolution.showPopup()
 QTest.keyClick(resolution, Qt.Key.Key_End)
@@ -403,22 +517,26 @@ assert json.loads(saved["software"][1]["params"]["config"])["execution"] == "Tai
 assert json.loads(saved["software"][1]["params"]["config"])["detail"] == 512
 assert json.loads(saved["software"][1]["params"]["config"])["resolution"] == "4096"
 assert json.loads(saved["software"][1]["params"]["config"])["antialiasing"] == "2x supersampling"
+assert json.loads(saved["software"][1]["params"]["config"])["geometry_method"] == "Taichi"
 editor.rebuild()
 controls = editor.custom_widgets[item["id"]]
 assert controls.fields.fields["execution"].currentText() == "Taichi Metal"
 assert controls.fields.fields["detail"].value() == 512
 assert controls.fields.fields["resolution"].currentText() == "4096"
 assert controls.fields.fields["antialiasing"].currentText() == "2x supersampling"
+assert controls.fields.fields["geometry_method"].currentText() == "Taichi"
 editor.locked = True
 controls.refresh()
 controls.change_value("execution", "OpenCV")
 controls.change_value("detail", 40)
 controls.change_value("resolution", "640")
 controls.change_value("antialiasing", "Off")
+controls.change_value("geometry_method", "NumPy")
 assert json.loads(item["params"]["config"])["execution"] == "Taichi Metal"
 assert json.loads(item["params"]["config"])["detail"] == 512
 assert json.loads(item["params"]["config"])["resolution"] == "4096"
 assert json.loads(item["params"]["config"])["antialiasing"] == "2x supersampling"
+assert json.loads(item["params"]["config"])["geometry_method"] == "Taichi"
 assert not controls.fields.isEnabled()
 window.close()
 '''

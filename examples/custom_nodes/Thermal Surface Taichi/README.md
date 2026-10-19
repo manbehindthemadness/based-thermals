@@ -1,5 +1,56 @@
 # Thermal Surface Taichi experiment
 
+## Deferred work: GPU presentation on a separate branch
+
+Recorded 2026-10-19. Finish the current visualizations first. Investigate GPU
+presentation later on a dedicated branch, tentatively
+`feature/gpu-visualization-renderer`. Implementation is deferred until the
+current visualization work is finished.
+
+The hypothesis is that avoiding finished-image readback and CPU image copies
+could reduce latency. Readback has not been isolated as the dominant remaining
+cost. On Apple Silicon, unified memory still requires synchronization and may
+involve conversions/copies. Merely replacing the image canvas with OpenGL would
+retain the current Custom node's NumPy output and subsequent CPU processing.
+
+Proposed design:
+
+- Define a common scene description: scalar heat grid, camera/view settings,
+  palette, lighting and display annotations.
+- Add an optional GPU presentation path using Qt's rendering abstraction:
+  Metal on macOS; tested Vulkan/OpenGL capabilities on Linux, including NVIDIA.
+  Graphics acceleration must not depend on CUDA being installed.
+- Keep the existing NumPy/OpenCV rasterizer and Qt image canvas as an explicit,
+  supported pure-CPU path. Qt Quick's software backend does not support all
+  shader features, so it cannot substitute for this implementation.
+- Initially send the small heat grid and scene settings to the viewer process
+  and let that process own GPU resources. Avoid cross-process sharing of Taichi
+  buffers/textures in the first prototype.
+- Keep requested backend preferences, provide capability-based fallback and an
+  explicit CPU override. Verify installed PySide6 bindings and optional package
+  requirements before choosing a specific Qt API.
+
+Preserve the separate Qt/OpenCV process boundary, latest-frame behavior, native
+radiometry, measurement sampling and Markup readouts. Rotation/mirroring, pointer
+mapping, annotation editing/locks/Z order and A-only visualization hiding must
+remain consistent. CPU image output must remain available for downstream image
+nodes, branch combinations, capture and recording; define where materialization
+is required before changing the Custom node's ndarray-only contract. A terminal
+height-map view is the initial prototype scope.
+
+First measure GPU computation, synchronization/readback, CPU conversions/copies,
+frame transport and presentation separately. Then compare end-to-end latency,
+cold startup, frame pacing, memory and visual fidelity on Apple Silicon,
+Linux/NVIDIA and forced CPU operation. Keep real GPU/camera checks outside normal
+pytest collection. Revisit implementation after the visualization work is finished.
+
+References: [Qt graphics architecture](https://doc.qt.io/qt-6/topics-graphics.html),
+[Qt software limitations](https://doc.qt.io/qt-6/qtquick-visualcanvas-adaptations-software.html),
+[Metal shared storage](https://developer.apple.com/documentation/metal/mtlstoragemode/shared),
+[Apple OpenGL migration guidance](https://developer.apple.com/documentation/apple-silicon/porting-your-macos-apps-to-apple-silicon).
+
+## Current experiment
+
 This separate **Custom** package compares the original Thermal Surface renderer
 with a compute-only Taichi rasterizer. It creates no windows, opens no camera,
 and adds no shared viewer backend, project dependency or preset. Taichi CPU is
@@ -18,6 +69,119 @@ The current defaults match the selected viewer setup: mesh 256, output long edge
 1280, view rotation 80°, elevation 45°, scene rotation 90°, X offset −14%, Y offset
 0%, zoom 1.0, height 0.7, smoothing 3.0, Turbo palette, Source range, mesh edges off
 and 2x supersampling on. Reopen this folder and save to update an embedded node.
+
+## Compiled geometry experiment
+
+**Geometry + lighting → Taichi** moves vertex projection, face normals, lighting,
+palette lookup and face gathering into compiled kernels on the selected Taichi
+CPU/Metal backend. The default **NumPy** keeps the previous path for comparison.
+The OpenCV renderer always uses NumPy geometry. Heat resizing, smoothing and
+normalization remain in NumPy/OpenCV; stable painter-depth sorting remains in
+NumPy to preserve overlap behavior. This is separate from choosing the renderer.
+
+The compiled path retains one current mesh's topology, vertices and intermediate
+arrays per node. Each frame uploads scalar heat and reads back only face depths
+for sorting; triangle/color arrays stay in the Taichi runtime through rasterization.
+The small palette, camera and sorted index arrays also cross the kernel boundary.
+It adds memory and initial compilation cost, and is not bit-identical to NumPy's
+floating-point arithmetic. No shared application backend or camera code changes.
+Missing runtimes and catchable compiler errors retain the existing OpenCV fallback.
+Switching Geometry + lighting clears a previous failure so that selection can retry.
+
+The kernel source guard now covers both raster and mesh kernels. Restart the
+viewer when loading this update after a Taichi runtime has already initialized,
+then reopen/resave the folder snapshot to obtain the new control. Existing
+snapshots without the setting use NumPy geometry.
+
+Run the camera-free comparison twice, changing only `--geometry` and `--output`:
+
+```sh
+.venv/bin/python experiments/experiment_taichi_surface.py \
+  --backends cpu metal --frames 150 --details 40 128 256 512 \
+  --resolution 1280 --antialiasing '2x supersampling' --geometry NumPy \
+  --output diagnostics/taichi-geometry-numpy-final
+.venv/bin/python experiments/experiment_taichi_surface.py \
+  --backends cpu metal --frames 150 --details 40 128 256 512 \
+  --resolution 1280 --antialiasing '2x supersampling' --geometry Taichi \
+  --output diagnostics/taichi-geometry-compiled
+```
+
+Measured 2026-10-19 on the M4 setup documented below, using the screenshot view,
+1280×960 output, 2x supersampling, 8 warmups and 150 changing frames per case.
+Times include the full Custom callback, copies, validation, sorting and completed
+readback. NumPy and compiled runs used identical package SHA256
+`0ceedc5e66a067d948ca27bbca10a9b798fc784c54bce5b5fe4e35ec9daf4ede`.
+
+| Mesh | CPU NumPy → compiled median | Metal NumPy → compiled median |
+| --- | ---: | ---: |
+| 40 | 13.38 → 13.19 ms | 7.73 → 8.54 ms |
+| 128 | 19.46 → 20.29 ms | 11.54 → 11.59 ms |
+| 256 | 41.38 → 23.71 ms | 28.39 → 16.46 ms |
+| 512 | 109.51 → 48.82 ms | 93.84 → 32.97 ms |
+
+Dense meshes benefit; small meshes do not show a consistent gain. At 256, p95
+CPU callback time changed 62.41→37.45 ms and Metal 46.38→31.75 ms. First compiled
+frame was 601 ms CPU/481 ms Metal versus 524/243 ms for NumPy geometry; cold times
+include import, JIT and allocation. Sequential runs are affected by desktop load,
+and some IDE/focused checks overlapped portions of the runs. These are indicative
+callback comparisons, not live camera-to-screen latency or a controlled hardware
+benchmark. Full application tests ran afterward.
+
+At 256, compiled versus NumPy geometry with the *same* rasterizer differed by
+0.00000271/255 mean channel value on CPU and 0.00000678 on Metal, with no pixels
+differing by more than 8. Independent projected-coordinate/depth checks passed,
+along with orientation, pan/zoom, portrait, wireframe, concurrent node and reload
+checks. The compiled PNG was inspected. Floating-point differences may be larger
+for other views. RSS checkpoints fluctuate with host/native allocator pressure;
+these short runs do not establish leak freedom. JSON includes p95, memory and
+separate OpenCV-raster comparison errors. No live camera was used.
+
+### NumPy regression investigation, 2026-10-19
+
+`experiments/experiment_taichi_regression.py` snapshots the committed pre-geometry
+package without changing the checkout, then runs old/new/new/old in fresh native
+processes. A separate process measures NumPy→Taichi→NumPy twice. Each phase has
+20 warmups and 150 changing frames; separate instrumentation reports heat,
+lighting and raster medians outside the main timings. It validates the effective
+backend and exact output equality when returning to NumPy. `--config` accepts a
+plain settings JSON object and applies it identically to both versions.
+
+With Source range at the screenshot defaults, old/current CPU median-of-run-medians
+was 35.11/34.98 ms. Metal's repeated old and current ranges overlapped; an initial
+small difference reversed on repetition. No persistent geometry-addition slowdown
+or fallback was reproduced. Mode switching sometimes added 1–2 ms, without
+progressive growth. Host load varied and the existing viewer remained running;
+these synthetic callbacks isolate the node rather than measuring that viewer.
+
+Saved settings additionally used Auto contrast and height 0.2. Auto contrast's
+percentile arithmetic returned float64 heat, widening NumPy's downstream mesh
+temporaries. That predated the new geometry option. The normalized heat now
+returns to float32 before mesh construction, while percentile normalization
+retains its existing arithmetic. Source-range rendering is unchanged; an
+independent original-renderer Auto-contrast check allows under 0.05 mean channel
+error and verifies normalized heat agreement within 2e-7.
+
+Paired CPU Auto-contrast runs measured 37.79–39.92 ms before and 32.13–32.73 ms
+after, approximately 17% lower callback time. Lighting stages changed from
+23.07–23.51 ms to 17.82–18.02 ms. This fixes an existing memory/precision cost,
+not evidence of a new NumPy regression. No native temperature arrays change.
+The source-range, repeated Metal, original Auto-contrast and fixed Auto-contrast
+reports are respectively in `diagnostics/taichi-regression-initial`,
+`diagnostics/taichi-regression-metal-repeat`,
+`diagnostics/taichi-regression-auto-contrast` and
+`diagnostics/taichi-regression-auto-contrast-fixed`. The fixed package SHA256 is
+`bc76340e58e61e3ad34eefb95032c69d526a50557bf669f7cb8c6fbd4b7c3b79`.
+
+```sh
+.venv/bin/python experiments/experiment_taichi_regression.py \
+  --reference 65ce5da --frames 150 --output diagnostics/taichi-regression
+```
+
+A direct float16 probe at mesh details 256 and 512 underflowed representative
+face-normal lengths to zero, as well as the `1e-8` normalization floor; float32
+returned nonzero lengths. Float16 is therefore not used for geometry arithmetic.
+Mixed float16 storage/float32 computation would require separate performance and
+image checks; no float16 speedup has been measured.
 
 ## Optional isolated setup
 
@@ -143,8 +307,8 @@ These final smoke reports use package SHA256
 
 ## What is being compared
 
-Both renderers use the same NumPy geometry, smoothing, normalization, per-face
-lighting, palette and stable far-to-near triangle ordering. The Taichi path
+With Geometry + lighting set to NumPy, both renderers use the same NumPy geometry,
+smoothing, normalization, per-face lighting, palette and stable far-to-near triangle ordering. The Taichi path
 parallelizes triangle coverage and resolves overlap with integer atomic painter
 ranks, then returns a BGR NumPy image. It does **not** introduce a depth buffer or
 change the existing low-elevation overlap limitations. Triangle-edge coverage

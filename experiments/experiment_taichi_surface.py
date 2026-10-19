@@ -10,6 +10,7 @@ import os
 import platform
 import subprocess
 import sys
+import traceback
 from concurrent.futures import ThreadPoolExecutor
 from hashlib import sha256
 from pathlib import Path
@@ -71,7 +72,8 @@ def check_controls(processor: CustomProcessor, params: dict[str, Any],
     for rotation, right, bottom in ((0, True, False), (90, True, True),
                                     (180, False, True), (-90, False, False)):
         item = configured(params, {**config, "yaw": 0, "tilt": 85, "height": 0,
-                                   "smoothing": 0, "palette": "Grayscale", "scene_rotation": rotation})
+                                   "smoothing": 0, "palette": "Grayscale", "scene_rotation": rotation,
+                                   "offset_x": 0, "offset_y": 0, "zoom": 1})
         result = processor.apply(image, item)
         hot_pixels = np.argwhere(result[:, :, 0] > 150)
         assert hot_pixels.size > 0
@@ -92,6 +94,20 @@ def check_controls(processor: CustomProcessor, params: dict[str, Any],
     portrait = processor.apply(image.transpose(1, 0, 2).copy(), plain_item)
     assert portrait.shape == (384, 288, 3)
     processor.retain(set())
+    if config.get("geometry_method") == "Taichi" and config["execution"] != "OpenCV":
+        for normalization in ("Source range", "Auto contrast"):
+            for antialiasing in ("Off", "2x supersampling"):
+                values = {**config, "normalization": normalization, "antialiasing": antialiasing}
+                native = configured(params, values)
+                baseline = configured(params, {**values, "geometry_method": "NumPy"})
+                actual = processor.apply(image, native)
+                expected = processor.apply(image, baseline)
+                assert renderer_state(processor, native).effective_execution == config["execution"]
+                error: npt.NDArray[np.float32] = np.abs(actual - expected)
+                channel_error: npt.NDArray[np.float32] = error.max(axis=2)
+                difference_fraction = float(np.count_nonzero(channel_error > 8)) / channel_error.size
+                assert error.mean() < 1 and difference_fraction < .01
+                processor.retain(set())
 
 
 def child(args: argparse.Namespace) -> dict[str, Any]:
@@ -112,18 +128,27 @@ def child(args: argparse.Namespace) -> dict[str, Any]:
             resolution = args.resolution or resolution
             config = {**defaults, "detail": detail, "resolution": resolution,
                       "antialiasing": args.antialiasing,
+                      "geometry_method": args.geometry,
                       "execution": EXECUTIONS[args.child]}
             item = configured(params, config)
             original_reference = (detail <= 96 and resolution in ("384", "640", "960")
                                   and args.antialiasing == "Off")
             reference_params = reference if original_reference else params
-            reference_item = configured(reference_params, {**config, "execution": "OpenCV"})
+            reference_item = configured(reference_params, {**config, "execution": "OpenCV",
+                                                            "geometry_method": "NumPy"})
             start = perf_counter()
             result = processor.apply(image, item)
             cold_ms = (perf_counter() - start) * 1000
             renderer = renderer_state(processor, item)
             if renderer.effective_execution != config["execution"]:
                 raise RuntimeError(f"Requested {config['execution']}; fell back: {renderer.fallback_reason}")
+            if args.geometry == "Taichi" and args.child != "opencv":
+                mesh = renderer.rasterizer.mesh
+                assert mesh is not None
+                vertices = mesh.vertices.to_numpy()
+                pixels, depths = renderer.geometry.project(vertices)
+                np.testing.assert_allclose(mesh.pixels.to_numpy(), pixels, rtol=1e-5, atol=.002)
+                np.testing.assert_allclose(mesh.depths.to_numpy(), depths, rtol=1e-5, atol=1e-6)
             if args.antialiasing != "Off" and args.child != "opencv":
                 floor = np.zeros((16, 16, 3), np.uint8)
                 triangles = np.array([[[1.25, 1.25], [8.25, 1.25], [1.25, 8.25]]], np.float32)
@@ -133,6 +158,18 @@ def child(args: argparse.Namespace) -> dict[str, Any]:
                 assert np.array_equal(coverage[3, 3], [255, 255, 255])
                 assert np.array_equal(coverage[0, 0], [0, 0, 0])
             expected = processor.apply(image, reference_item)
+            geometry_error_mean, geometry_error_fraction = 0.0, 0.0
+            if args.geometry == "Taichi" and args.child != "opencv":
+                geometry_reference_item = configured(params, {**config, "geometry_method": "NumPy"})
+                geometry_reference = processor.apply(image, geometry_reference_item)
+                geometry_error: npt.NDArray[np.float32] = np.abs(result - geometry_reference)
+                geometry_error_mean = float(geometry_error.mean())
+                geometry_channels: npt.NDArray[np.float32] = geometry_error.max(axis=2)
+                geometry_error_fraction = (
+                    float(np.count_nonzero(geometry_channels > 8)) / geometry_channels.size
+                )
+                assert geometry_error_mean < 1 and geometry_error_fraction < .01
+                processor.retain({item["id"], reference_item["id"]})
             assert np.array_equal(image, original)
             assert result.shape == expected.shape and result.dtype == np.float32
             assert np.isfinite(result).all() and result.min() >= 0 and result.max() <= 255
@@ -157,6 +194,9 @@ def child(args: argparse.Namespace) -> dict[str, Any]:
             assert error.mean() < 5 and difference_fraction < .08
             rows.append({"detail": detail, "resolution": resolution, "shape": list(result.shape),
                          "antialiasing": args.antialiasing,
+                         "geometry_method": args.geometry,
+                         "geometry_mean_absolute_pixel_error": geometry_error_mean,
+                         "geometry_pixels_with_error_over_8_fraction": geometry_error_fraction,
                          "reference": "original" if original_reference else "experimental OpenCV",
                          "first_frame_ms": cold_ms, "warm_median_ms": float(np.median(timings)),
                          "warm_p95_ms": float(np.percentile(timings, 95)), "frames": args.frames,
@@ -169,7 +209,8 @@ def child(args: argparse.Namespace) -> dict[str, Any]:
                 cv2.imwrite(str(args.output / f"{args.child}-{detail}-{label}.png"), output.astype(np.uint8))
             processor.retain(set())
         # Separate modules/processors must share initialization without sharing node-owned buffers.
-        config = {**defaults, "execution": EXECUTIONS[args.child], "detail": 24, "resolution": "384"}
+        config = {**defaults, "execution": EXECUTIONS[args.child], "detail": 24, "resolution": "384",
+                  "geometry_method": args.geometry}
         check_controls(processor, params, config, args.output)
         peer = CustomProcessor(apple_available=False, nvidia_available=False)
         try:
@@ -217,6 +258,7 @@ def main() -> int:
                                                "2304", "2560", "3840", "4096"),
                         help="Override requested output long edge; four-megapixel cap still applies")
     parser.add_argument("--antialiasing", choices=("Off", "2x supersampling"), default="Off")
+    parser.add_argument("--geometry", choices=("NumPy", "Taichi"), default="NumPy")
     parser.add_argument("--timeout", type=int, default=120)
     parser.add_argument("--runtime", type=Path, help="Optional isolated --target package directory")
     parser.add_argument("--output", type=Path, default=ROOT / "diagnostics/taichi-surface")
@@ -234,6 +276,7 @@ def main() -> int:
             report = child(args)
         except Exception as exc:  # noqa: BLE001 - Preserve arbitrary experiment failures in the report.
             # Native experiments must retain compiler/import failures in their independent report.
+            traceback.print_exc()
             report = {"ok": False, "backend": args.child, "error": f"{type(exc).__name__}: {exc}"}
         (args.output / f"{args.child}.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
         return 0 if report["ok"] else 1
@@ -253,6 +296,7 @@ def main() -> int:
         if args.resolution:
             command.extend(["--resolution", args.resolution])
         command.extend(["--antialiasing", args.antialiasing])
+        command.extend(["--geometry", args.geometry])
         try:
             completed = subprocess.run(command, env=environment, capture_output=True, text=True,
                                        timeout=args.timeout, check=False)
