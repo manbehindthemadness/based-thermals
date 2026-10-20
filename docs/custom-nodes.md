@@ -41,14 +41,11 @@ colorization as the software palette node. The updated packages require an
 application version containing this helper. Older embedded packages retain their
 old controls until their module folder is reopened and the pipeline saved again.
 
-The shared visualization palette menu also offers saved custom palettes from the
-Imaging panel's **Palette builder**. A `choice` control with key `palette` and
-options exactly matching `list(palette_names())` opts into this menu. Its current
-value may be a built-in label or a portable `custom:` gradient string; preserve
-that value when saving configurations and resolve it with `palette_lut(value)`.
-Membership checks against `palette_names()` accept validated custom strings, so
-existing embedded surface packages using that helper remain compatible. Iterating
-the names still yields only the stable built-in choices, without reading user files.
+Custom packages can use the app's palette catalog directly through a `palette`
+control and `based_thermals.custom_nodes.palettes`; no embedded palette list or
+lookup tables are needed. The five visualization examples use this control.
+Existing embedded packages with the old shared `choice` menu remain compatible,
+as do their legacy palette labels and `palette_names()` membership checks.
 
 For camera-free synthetic previews and CPU timings, run from the repository root:
 
@@ -167,6 +164,7 @@ saved/exported pipelines. Reopening the folder reloads its defaults and controls
 | `choice` | Dropdown | `options`: a nonempty list of unique strings |
 | `text` | Text field, applied when editing finishes | None |
 | `color` | Color dropdown and **Choose…** picker | Value: RGB `#RRGGBB` or `dynamic` |
+| `palette` | App software and saved custom palette dropdown | Value: built-in identifier or portable custom gradient; no `options` field |
 | `model` | Existing ONNX model dropdown and **Browse…** | Value: local path or `""` for automatic download |
 | `device` | Execution and Apple compute-device selectors | Value: object with `backend` and `apple_compute` |
 
@@ -176,6 +174,43 @@ Defaults/current values must match their types and ranges. Control definitions
 fit within 64 KiB. Generated controls honor pipeline locks, and JSON edits refresh
 their displayed values. Controls update configuration; they do not invoke Python
 callbacks in the UI process.
+
+### App palettes in Custom packages
+
+Declare a `palette` control with any configuration key. The editor fills its
+choices from the main app's software palette catalog and the saved Palette builder
+library. It rescans when the dropdown opens, preserving an open selection through
+routine frame updates. Existing selections remain usable if their library entry
+is deleted. Pipeline locks disable edits.
+
+For a grayscale display input, a complete package can be as small as:
+
+```python
+from based_thermals.custom_nodes.palettes import apply_palette
+
+CONFIG_JSON = {
+    "defaults": {"colors": "inferno"},
+    "controls": [{"key": "colors", "label": "Colors", "type": "palette"}],
+}
+
+
+def process(image, config):
+    return apply_palette(image[:, :, 0], config["colors"])
+```
+
+Use Source Raw for this example. `apply_palette(gray, value)` accepts a finite,
+nonempty 2D display-intensity array, clips/rounds it to 0–255, and returns uint8
+BGR pixels without changing its input. It does not convert temperatures.
+
+The same module exposes `palette_lut(value)`, a cached immutable 256×3 uint8 BGR
+table for renderers that index colors themselves, and `palette_choices()`, a tuple
+of `(value, label)` pairs for discovery. Call discovery on demand rather than
+every frame. `builtin_palettes()` lists only built-ins; `palette_key(value)`
+validates and resolves built-in identifiers or legacy visualization labels.
+Lookup/rendering does not read the user library during processing. Pass selected
+values through unchanged: custom values carry a full gradient snapshot, making
+saved/exported pipelines portable. Saving an edited palette in the builder updates
+matching active selections, including palette controls with keys other than `palette`.
 
 Decimal `number` controls may include optional `decimals` (integer 0–9) to select
 their displayed/input precision; omitted values retain nine decimal places.

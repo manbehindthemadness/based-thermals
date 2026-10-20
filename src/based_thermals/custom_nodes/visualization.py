@@ -9,7 +9,9 @@ from typing import Any
 import cv2
 import numpy as np
 
-from ..palettes import PREFIX, custom_lut, read_palette
+from ..palettes import PREFIX, read_palette
+from .palettes import palette_key
+from .palettes import palette_lut as app_palette_lut
 
 
 class PaletteNames(tuple):
@@ -26,6 +28,12 @@ class PaletteNames(tuple):
         """
         if isinstance(value, str) and value.startswith(PREFIX):
             read_palette(value)
+            return True
+        if isinstance(value, str):
+            try:
+                palette_key(value)
+            except ValueError:
+                return False
             return True
         return super().__contains__(value)
 
@@ -50,24 +58,7 @@ def palette_lut(name: str) -> np.ndarray:
     """
     Return an immutable 256×3 BGR ramp using the application's palette implementation.
     """
-    from ..pipeline_model.catalog import PALETTES
-    from ..processing.images import colorize
-
-    if name.startswith(PREFIX):
-        return custom_lut(name)
-    if name == "Grayscale":
-        key = "white_hot"
-    else:
-        keys = {
-            f"{label} (approx.)" if key.startswith("camera_") else label: key
-            for key, label in PALETTES.items()
-        }
-        if name not in keys:
-            raise ValueError(f"Unsupported thermal palette: {name!r}")
-        key = keys[name]
-    ramp = np.arange(256, dtype=np.uint8).reshape(256, 1)
-    result = colorize(ramp, key)[:, 0].copy()
-    result.setflags(write=False)
+    result = app_palette_lut(name)
     return result
 
 

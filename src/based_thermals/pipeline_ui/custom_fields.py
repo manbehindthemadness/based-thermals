@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
 from ..palettes import is_palette_choice
 from .custom_choices import ColorPicker, ModelPicker
 from .custom_devices import DevicePicker
+from .custom_palettes import PalettePicker
 from .palette_choices import palette_options
 
 
@@ -42,6 +43,8 @@ class CustomFields(QWidget):
             key, kind = control["key"], control["type"]
             if kind == "device":
                 widget = DevicePicker(values[key], lambda value, name=key: changed(name, value), state)
+            elif kind == "palette":
+                widget = PalettePicker(values[key], lambda value, name=key: changed(name, value))
             elif kind == "color":
                 widget = ColorPicker(values[key], lambda value, name=key: changed(name, value))
             elif kind == "model":
@@ -103,7 +106,7 @@ class CustomFields(QWidget):
             blocker = QSignalBlocker(widget)
             if isinstance(widget, DevicePicker):
                 widget.refresh(values[key], state)
-            elif isinstance(widget, (ColorPicker, ModelPicker)):
+            elif isinstance(widget, (PalettePicker, ColorPicker, ModelPicker)):
                 widget.refresh(values[key])
             elif isinstance(widget, QCheckBox):
                 widget.setChecked(values[key])

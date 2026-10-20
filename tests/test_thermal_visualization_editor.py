@@ -32,6 +32,7 @@ from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QFileDialog
 from based_thermals.view_window import ViewWindow
 from based_thermals.pipeline import validate_pipeline
+from based_thermals.custom_nodes.palettes import builtin_palettes
 app = QApplication([])
 window = ViewWindow(lambda message: None)
 window.show()
@@ -43,12 +44,12 @@ QFileDialog.getExistingDirectory = lambda *args: FOLDER
 controls.open_folder()
 app.processEvents()
 combo = controls.fields.fields["palette"]
-assert combo.count() == 22
+assert combo.count() == len(builtin_palettes())
 combo.showPopup()
 QTest.keyClick(combo, Qt.Key.Key_End)
 QTest.keyClick(combo, Qt.Key.Key_Up)
 highlight = combo.view().currentIndex().row()
-assert combo.itemText(highlight) == "Green hot (approx.)"
+assert combo.itemData(highlight) == "camera_21"
 for _ in range(12):
     editor.update_state({
         "pipeline": deepcopy(editor.document), "pipeline_serial": editor.edit_serial,
@@ -57,14 +58,14 @@ for _ in range(12):
     assert combo.view().isVisible()
     assert combo.view().currentIndex().row() == highlight
 QTest.keyClick(combo, Qt.Key.Key_Return)
-assert combo.currentText() == "Green hot (approx.)"
+assert combo.currentData() == "camera_21"
 values = json.loads(item["params"]["config"])
-assert values["palette"] == "Green hot (approx.)"
+assert values["palette"] == "camera_21"
 saved = validate_pipeline(json.loads(json.dumps(editor.document)))
 assert json.loads(saved["software"][1]["params"]["config"]) == values
 editor.rebuild()
 controls = editor.custom_widgets[item["id"]]
-assert controls.fields.fields["palette"].currentText() == "Green hot (approx.)"
+assert controls.fields.fields["palette"].currentData() == "camera_21"
 editor.locked = True
 controls.refresh()
 assert not controls.fields.isEnabled()

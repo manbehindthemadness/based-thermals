@@ -10,7 +10,8 @@ from typing import TYPE_CHECKING
 
 from PySide6.QtWidgets import QFileDialog, QMessageBox
 
-from ..palettes import read_library, save_palettes, write_library
+from ..custom_nodes.configuration import read_controls
+from ..palettes import is_palette_choice, read_library, save_palettes, write_library
 from ..pipeline import software_tabs
 
 if TYPE_CHECKING:
@@ -83,8 +84,17 @@ def refresh_pipeline_palettes(editor: PipelineEditor, old: str | None, new: str 
                     changed = True
                 elif item["type"] == "custom":
                     config = json.loads(params["config"])
-                    if config.get("palette") == old:
-                        config["palette"] = new
+                    fields = read_controls(params.get("controls", "[]"), config)
+                    keys = {field["key"] for field in fields
+                            if field["type"] == "palette" or is_palette_choice(field)}
+                    # Preserve JSON-only packages that used the original shared helper.
+                    keys.add("palette")
+                    updated = False
+                    for key in keys:
+                        if config.get(key) == old:
+                            config[key] = new
+                            updated = True
+                    if updated:
                         params["config"] = json.dumps(config, allow_nan=False)
                         changed = True
     editor.rebuild(software_only=True)

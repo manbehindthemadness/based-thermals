@@ -15,7 +15,7 @@ from support.pipeline import raw_pipeline
 
 from based_thermals.custom_nodes.bundle import load_folder
 from based_thermals.custom_nodes.runtime import CustomProcessor
-from based_thermals.custom_nodes.visualization import palette_lut, palette_names
+from based_thermals.custom_nodes.visualization import palette_lut
 from based_thermals.pipeline import node, validate_pipeline
 from based_thermals.pipeline_model.catalog import PALETTES
 from based_thermals.pipeline_model.measurement_graphics import measurement_graphics_visible
@@ -93,11 +93,11 @@ def test_all_palettes_render_and_survive_export(name: str, processor: CustomProc
     )
     controls = json.loads(item["params"]["controls"])
     palette = next(field for field in controls if field["key"] == "palette")
-    assert tuple(palette["options"]) == palette_names()
+    assert palette["type"] == "palette" and "options" not in palette
     image = np.repeat(np.linspace(0, 255, 32, dtype=np.float32)[None, :, None], 3, axis=2)
     image = np.repeat(image, 24, axis=0)
     original = image.copy()
-    for palette_name in palette_names():
+    for palette_name in PALETTES:
         selected = changed(item, palette=palette_name)
         document = validate_pipeline(json.loads(json.dumps(raw_pipeline(selected))))
         output = processor.apply(image, document["software"][2])

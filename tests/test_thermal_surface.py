@@ -307,7 +307,8 @@ for key in ("scene_rotation", "offset_x", "offset_y", "zoom"):
         app.processEvents()
 combo = fields["palette"]
 combo.showPopup()
-QTest.keyClick(combo, Qt.Key.Key_Down)
+for _ in range(combo.findData("turbo") - combo.currentIndex()):
+    QTest.keyClick(combo, Qt.Key.Key_Down)
 for _ in range(12):
     editor.update_state({
         "pipeline": deepcopy(editor.document), "pipeline_serial": editor.edit_serial,
@@ -318,7 +319,7 @@ assert combo.currentText() == "Turbo"
 check = fields["wireframe"]
 QTest.mouseClick(check, Qt.MouseButton.LeftButton, pos=QPoint(6, check.height() // 2))
 values = json.loads(item["params"]["config"])
-assert values["detail"] == 44 and values["palette"] == "Turbo" and values["wireframe"]
+assert values["detail"] == 44 and values["palette"] == "turbo" and values["wireframe"]
 assert values["scene_rotation"] == 5 and values["offset_x"] == values["offset_y"] == 1
 assert values["zoom"] == 1.1
 saved = validate_pipeline(json.loads(json.dumps(editor.document)))
