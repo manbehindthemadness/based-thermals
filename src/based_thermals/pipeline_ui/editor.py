@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any, cast
 if TYPE_CHECKING:
     from ..view_window import ControlRow
 
-from PySide6.QtCore import QPointF, Qt
+from PySide6.QtCore import QPointF, QSettings, Qt
 from PySide6.QtGui import QColor, QPalette, QStandardItemModel
 from PySide6.QtWidgets import (
     QComboBox,
@@ -65,7 +65,12 @@ class PipelineEditor(PipelineTabs, QWidget):
         self.document = default_pipeline()
         self.accepted_document = deepcopy(self.document)
         self.tab = "A"
-        self.software_expanded = True
+        self.section_settings = QSettings(
+            QSettings.Format.IniFormat, QSettings.Scope.UserScope, "based-thermals", "desktop",
+        )
+        self.software_expanded = cast(
+            bool, self.section_settings.value("camera/software_expanded", True, type=bool),
+        )
         self.edit_serial = 0
         self.hardware_state = {}
         self.last_desired = desired_hardware(self.document)

@@ -69,8 +69,11 @@ class PipelineTabs:
 
     def set_software_expanded(self: PipelineEditor, expanded: bool) -> None:
         """
-        Hide software content while leaving tabs and pipeline actions accessible.
+        Remember software disclosure state while keeping tabs and actions accessible.
         """
+        if self.software_expanded != expanded:
+            self.section_settings.setValue("camera/software_expanded", expanded)
+            self.section_settings.sync()
         self.software_expanded = expanded
         for widget in (self.tab_status, self.stack_titles["software"], self.stacks["software"]):
             widget.setVisible(expanded)

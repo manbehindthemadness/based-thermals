@@ -78,6 +78,9 @@ Software nodes run from top to bottom in each tab. A new blank pipeline starts
 with **A**, whose fixed **Image source** feeds the stack and whose fixed **Output**
 feeds the viewer. Source/output cannot be removed; Source cannot be bypassed.
 Add processing nodes between them. The viewer's rotation is applied afterward.
+The software section remembers whether it was expanded or collapsed across Imaging
+panel openings and application restarts. Click the active tab to toggle it, or
+select another tab to expand that tab's controls.
 
 ## Build and edit a simple pipeline
 
