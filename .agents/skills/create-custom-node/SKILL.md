@@ -107,6 +107,43 @@ name from the algorithm actually executed.
   loops or arbitrary process termination. Explain actual external requirements,
   without adding confirmation flows beyond the user's authorized scope.
 
+## App color palettes
+
+For nodes that map display intensity to colors, use the application's shared
+palette catalog rather than embedding palette lists, lookup tables or OpenCV
+colormap constants. Fixed annotation colors and model-generated RGB outputs do
+not need palette substitution. See the Thermal Surface examples and the app
+palette section in [`docs/custom-nodes.md`](../../../docs/custom-nodes.md).
+
+Declare a literal control such as `{"key": "palette", "label": "Colors", "type": "palette"}`
+with a matching default identifier such as `"turbo"`. Any configuration key is
+supported; omit `options`. The app picker supplies built-in software palettes and
+saved Palette builder gradients. Use `based_thermals.custom_nodes.palettes`:
+
+- `palette_key(value)` validates/resolves built-in identifiers, legacy visualization
+  labels and portable custom gradients. Prefer canonical identifiers in new defaults.
+- `palette_lut(value)` returns a cached immutable 256×3 uint8 BGR lookup table.
+  Index it for mesh colors; copy it first if an algorithm must modify the table.
+- `apply_palette(gray, value)` colorizes a finite nonempty 2D display-intensity
+  plane, clipping/rounding to 0–255 and returning uint8 BGR without changing input.
+- `palette_choices()` discovers built-ins and saved custom palettes on demand;
+  `builtin_palettes()` lists built-ins only. Do not discover/read the library on
+  every frame. Lookup and colorization resolve selected values without library I/O.
+
+Preserve selected custom values in configuration: their `custom:` strings embed
+the complete gradient and survive library deletion or pipeline export to another
+machine. Do not replace them with a display name or local library index. These
+palettes affect display pixels only, never native radiometry. Maintained packages
+should use this API directly; retain the older visualization palette helpers for
+compatibility with existing embedded packages when changing app infrastructure.
+
+Verify built-in and custom selections through the real worker and a save/export
+round trip, including legacy labels where supported and a custom selection after
+library deletion. For picker changes, test active popup highlights through routine
+state refreshes, discovery on the next opening and pipeline locks. Updating an
+example folder does not rewrite saved embedded packages; document that reopening
+the folder loads its source and defaults, then saving updates the pipeline.
+
 ## Adapt and deliver
 
 For model-based nodes, make first use concrete: expose model variants with literal

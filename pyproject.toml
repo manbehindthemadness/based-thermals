@@ -29,6 +29,7 @@ apple = ["onnxruntime>=1.23; sys_platform == 'darwin'"]
 [dependency-groups]
 dev = [
     "pytest>=8.4.0",
+    "pyyaml>=6.0.3",
     "ruff>=0.13.0",
 ]
 

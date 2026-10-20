@@ -35,6 +35,9 @@ See the [palette format](palettes.md#custom-palette-files).
 Saved custom palettes appear in **App colors** and the shared thermal visualization
 palette menus. Saving an edited palette updates matching selections throughout
 the active pipeline's tabs; saved pipeline presets change only when saved again.
+If an update exceeds a node's configuration limit or fails pipeline validation,
+the palette remains saved in the library and all active pipeline settings stay
+unchanged. The panel explains that the saved palette could not be applied.
 Pipeline documents embed the full selected gradient, so they can be shared and
 continue working after a palette is deleted from the local library. These controls
 affect display colors only, without changing camera hardware palettes or measurements.

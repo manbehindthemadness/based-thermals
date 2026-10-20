@@ -4,6 +4,7 @@ import base64
 import subprocess
 import sys
 from copy import deepcopy
+from pathlib import Path
 from time import monotonic, sleep
 from typing import Any
 
@@ -12,6 +13,7 @@ import numpy as np
 import pytest
 from support.desktop_recording import viewer_fixture
 from support.pipeline import multi_tab_pipeline as default_pipeline
+from support.qt_process import run_popup
 from test_capture_panel import popup_environment
 from test_render import frame_with_preview
 
@@ -173,7 +175,10 @@ def test_worker_previews_are_revision_guarded_throttled_and_cleared_on_close(mon
     assert worker.latest_preview_timings(2) == {}
 
 
-def test_preview_node_ui_expands_collapses_and_shows_aspect_preserving_images(tmp_path):
+def test_preview_node_ui_expands_collapses_and_shows_aspect_preserving_images(tmp_path: Path) -> None:
+    """
+    Exercise preview widgets using isolated application preferences and Qt state.
+    """
     script = """
 import base64, sys
 from PySide6.QtCore import QByteArray, QBuffer, QIODevice, Qt
@@ -239,14 +244,7 @@ assert not editor.widgets[item["id"]][3].isEnabled()
 window.grab().save(sys.argv[1] + "/preview-node.png")
 window.close()
 """
-    result = subprocess.run(
-        [sys.executable, "-c", script, str(tmp_path)],
-        env=popup_environment(),
-        capture_output=True,
-        text=True,
-        timeout=20,
-        check=False,
-    )
+    result = run_popup(script, tmp_path)
     assert result.returncode == 0, result.stderr
 
 

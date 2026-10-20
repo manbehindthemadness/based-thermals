@@ -5,8 +5,9 @@ Palette library JSON transfers and active pipeline snapshot updates.
 from __future__ import annotations
 
 import json
+from copy import deepcopy
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from PySide6.QtWidgets import QFileDialog, QMessageBox
 
@@ -26,7 +27,7 @@ def import_palettes(builder: PaletteBuilder) -> None:
     if builder.locked:
         return
     path, _ = QFileDialog.getOpenFileName(builder, "Import palettes", "", "Palette JSON (*.json)")
-    if not path:
+    if not path or builder.locked:
         return
     try:
         incoming = read_library(Path(path))
@@ -62,7 +63,7 @@ def export_palette(builder: PaletteBuilder) -> None:
         path, _ = QFileDialog.getSaveFileName(
             builder, "Export palette", "palette.json", "Palette JSON (*.json)",
         )
-        if path:
+        if path and not builder.locked:
             write_library(Path(path), {value["name"]: value})
     except (OSError, ValueError) as exc:
         QMessageBox.warning(builder, "Could not export palette", str(exc))
@@ -70,14 +71,17 @@ def export_palette(builder: PaletteBuilder) -> None:
 
 def refresh_pipeline_palettes(editor: PipelineEditor, old: str | None, new: str | None) -> None:
     """
-    Update exact active snapshots on Save and refresh menus without changing saved presets.
+    Validate all active replacements before committing any live parameter changes.
     """
-    changed = False
     if editor.locked:
         return
-    for nodes in software_tabs(editor.document).values():
-        for item in nodes:
+    candidate = deepcopy(editor.document)
+    current_tabs = software_tabs(editor.document)
+    updates: list[tuple[dict[str, Any], dict[str, Any]]] = []
+    for tab, nodes in software_tabs(candidate).items():
+        for index, item in enumerate(nodes):
             params = item["params"]
+            changed = False
             if old is not None and new is not None and old != new:
                 if item["type"] == "colors" and params["palette"] == old:
                     params["palette"] = new
@@ -97,6 +101,12 @@ def refresh_pipeline_palettes(editor: PipelineEditor, old: str | None, new: str 
                     if updated:
                         params["config"] = json.dumps(config, allow_nan=False)
                         changed = True
+            if changed:
+                updates.append((current_tabs[tab][index]["params"], params))
+    if updates:
+        editor.validate_document(candidate)
+        for current, replacement in updates:
+            current.update(replacement)
     editor.rebuild(software_only=True)
-    if changed:
+    if updates:
         editor.publish()

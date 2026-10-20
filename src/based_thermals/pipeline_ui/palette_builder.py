@@ -213,7 +213,7 @@ class PaletteBuilder(QWidget):
         if self.locked:
             return
         color = QColorDialog.getColor(QColor(button.text()), self, "Choose palette stop color")
-        if color.isValid():
+        if color.isValid() and not self.locked:
             button.setProperty("color", color.name())
             button.setText(color.name())
             button.setStyleSheet(f"border-bottom: 5px solid {color.name()}")
@@ -238,13 +238,18 @@ class PaletteBuilder(QWidget):
         """
         Protect changed drafts before switching palettes, importing or starting over.
         """
+        if self.locked:
+            return False
         try:
             dirty = palette_token(self.draft()) != self.baseline
         except ValueError:
             dirty = True
-        return not dirty or QMessageBox.question(
+        if not dirty:
+            return True
+        confirmed = QMessageBox.question(
             self, "Discard palette draft", "Discard the unsaved palette changes?",
         ) == QMessageBox.StandardButton.Yes
+        return confirmed and not self.locked
 
     def select(self, index: int) -> None:
         """
@@ -315,7 +320,7 @@ class PaletteBuilder(QWidget):
 
     def save(self) -> None:
         """
-        Atomically create, update or rename a palette, then refresh active selections.
+        Save the library atomically and report pipeline validation failures separately.
         """
         if self.locked:
             return
@@ -329,6 +334,8 @@ class PaletteBuilder(QWidget):
                 self, "Replace palette", f'Replace the saved palette "{collision}"?',
             ) != QMessageBox.StandardButton.Yes:
                 return
+            if self.locked:
+                return
             old = palette_token(self.palettes[self.current]) if self.current else None
             candidate = {key: entry for key, entry in self.palettes.items()
                          if key not in (self.current, collision)}
@@ -336,9 +343,17 @@ class PaletteBuilder(QWidget):
             save_palettes(candidate)
             self.palettes = candidate
             self.load_draft(name)
-            self.changed(old, palette_token(value))
         except (OSError, ValueError) as exc:
             QMessageBox.warning(self, "Could not save palette", str(exc))
+            return
+        try:
+            self.changed(old, palette_token(value))
+        except ValueError as exc:
+            self.changed(None, None)
+            QMessageBox.warning(
+                self, "Palette saved; pipeline unchanged",
+                f"The palette was saved, but could not be applied to the active pipeline:\n{exc}",
+            )
 
     def commit_pending_inputs(self) -> None:
         """
@@ -357,6 +372,8 @@ class PaletteBuilder(QWidget):
         if QMessageBox.question(
             self, "Delete palette", f'Delete "{self.current}" from the library?',
         ) != QMessageBox.StandardButton.Yes:
+            return
+        if self.locked:
             return
         try:
             candidate = {name: value for name, value in self.palettes.items() if name != self.current}
