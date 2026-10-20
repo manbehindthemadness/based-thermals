@@ -9,6 +9,26 @@ from typing import Any
 import cv2
 import numpy as np
 
+from ..palettes import PREFIX, custom_lut, read_palette
+
+
+class PaletteNames(tuple):
+    """
+    Retain legacy named options while accepting validated portable gradient selections.
+
+    Existing embedded surface packages validate with ``value in palette_names()``.
+    Keeping that contract avoids rewriting user-owned package source on load.
+    """
+
+    def __contains__(self, value: object) -> bool:
+        """
+        Recognize complete custom snapshots without enumerating user-library entries.
+        """
+        if isinstance(value, str) and value.startswith(PREFIX):
+            read_palette(value)
+            return True
+        return super().__contains__(value)
+
 
 @lru_cache(maxsize=1)
 def palette_names() -> tuple[str, ...]:
@@ -22,7 +42,7 @@ def palette_names() -> tuple[str, ...]:
         name = f"{label} (approx.)" if key.startswith("camera_") else label
         if name not in names:
             names.append(name)
-    return tuple(names)
+    return PaletteNames(names)
 
 
 @lru_cache(maxsize=32)
@@ -33,6 +53,8 @@ def palette_lut(name: str) -> np.ndarray:
     from ..pipeline_model.catalog import PALETTES
     from ..processing.images import colorize
 
+    if name.startswith(PREFIX):
+        return custom_lut(name)
     if name == "Grayscale":
         key = "white_hot"
     else:

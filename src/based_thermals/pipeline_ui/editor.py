@@ -43,6 +43,7 @@ from .dual import desired_camera_hardware as desired_hardware
 from .hardware import HardwareControlFields
 from .hardware_section import HardwareSection
 from .markup import MarkupControls
+from .palette_choices import palette_options
 from .presets import pipeline_content, rename_current_preset
 from .selection import PresetSelection
 from .state import update_editor_state
@@ -650,6 +651,8 @@ class PipelineEditor(PipelineTabs, QWidget):
                         step=spec.step,
                         options=self.combine_options(key)
                         if item["type"] == "combine" and key in ("tab", "mask_source")
+                        else palette_options(spec.options, item["params"][key])
+                        if item["type"] == "colors" and key == "palette"
                         else spec.options,
                         unit=spec.unit,
                         release_only=stack != "software",

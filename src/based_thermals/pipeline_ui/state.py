@@ -8,6 +8,7 @@ import math
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any
 
+from PySide6.QtCore import QSignalBlocker
 from PySide6.QtGui import QStandardItemModel
 from PySide6.QtWidgets import QComboBox
 
@@ -17,6 +18,7 @@ if TYPE_CHECKING:
 from ..enhancement_limits import enhancement_pass_limits
 from ..feature_processing import feature_fields
 from ..image_filters import allowed_kernels, filter_fields
+from ..palettes import PREFIX, read_palette
 from ..pipeline import preview_required, software_tabs
 from ..pipeline_model.sources import source_required
 from .compute import backend_status, configure_backend_row, state_backend, update_compute_devices
@@ -262,6 +264,11 @@ def update_editor_state(self: PipelineEditor, state: Any, locked: Any) -> None:
                         if key == "backend"
                         else item["params"][key]
                     )
+                    if (item["type"] == "colors" and key == "palette"
+                            and isinstance(value, str) and value.startswith(PREFIX)
+                            and isinstance(row.input, QComboBox) and row.input.findData(value) < 0):
+                        with QSignalBlocker(row.input):
+                            row.input.addItem(f"Embedded · {read_palette(value)['name']}", value)
                     row.update_state(value, available)
             # Child size changes (badges) need a refreshed item height.
     for listing in self.stacks.values():

@@ -21,6 +21,23 @@ The matching **Calibrations** section below it contains distance, emissivity, an
 reflected-temperature calibration tools. It also starts collapsed on first use and
 remembers its last state independently of Environment.
 
+The **Palette builder** at the bottom of the panel also remembers its disclosure
+state and starts collapsed. Create a named gradient, use **Add stop** and
+**Remove stop** to adjust its interior colors, and edit each stop's position or
+color. The fixed 0% and 100% endpoints represent cool and hot display intensities.
+The preview updates as you edit; **Save** creates or updates the palette. Editing
+the name of a loaded palette and saving renames it; choose **New** for a separate
+palette. **Import…** merges a palette JSON file after validation and confirmation
+of name collisions. **Export…** writes the current draft, including unsaved edits.
+See the [palette format](palettes.md#custom-palette-files).
+
+Saved custom palettes appear in **App colors** and the shared thermal visualization
+palette menus. Saving an edited palette updates matching selections throughout
+the active pipeline's tabs; saved pipeline presets change only when saved again.
+Pipeline documents embed the full selected gradient, so they can be shared and
+continue working after a palette is deleted from the local library. These controls
+affect display colors only, without changing camera hardware palettes or measurements.
+
 ## Start with a preset
 
 1. Open Imaging and select a bundled pipeline from the preset dropdown.

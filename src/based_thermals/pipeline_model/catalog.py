@@ -10,6 +10,7 @@ from typing import Any
 
 from ..camera_backends.duo.hardware_controls import HARDWARE_CONTROLS
 from ..image_filters import FILTER_MODES, KERNELS
+from ..palettes import PREFIX, read_palette
 from ..view_settings import COLOR_PALETTES
 from .tabs import is_tab_name
 
@@ -61,6 +62,21 @@ class TabParameter(Parameter):
         """
         if not isinstance(value, str) or value not in dict(self.options) and not is_tab_name(value):
             raise ValueError(f"Invalid {self.title}")
+
+
+class PaletteParameter(Parameter):
+    """
+    Accept built-in choices or a complete portable custom gradient.
+    """
+
+    def validate(self, value: Any) -> None:
+        """
+        Validate embedded data without reading a user's palette library.
+        """
+        if isinstance(value, str) and value.startswith(PREFIX):
+            read_palette(value)
+        else:
+            super().validate(value)
 
 
 class HardwareValueParameter(Parameter):
@@ -302,7 +318,9 @@ SOFTWARE_NODES = {
     ),
     "contrast": ("Software contrast", {"amount": Parameter("Contrast", 1.0, 0, 3, 0.01)}),
     "gamma": ("Software gamma", {"amount": Parameter("Gamma", 1.0, 0.1, 3, 0.01)}),
-    "colors": ("App colors", {"palette": choice("Palette", "inferno", tuple(PALETTES.items()))}),
+    "colors": ("App colors", {"palette": PaletteParameter(
+        "Palette", "inferno", options=tuple(PALETTES.items()),
+    )}),
     "edges": (
         "Edge features",
         {

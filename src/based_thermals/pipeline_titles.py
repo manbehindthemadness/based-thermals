@@ -2,6 +2,7 @@
 
 from typing import Any
 
+from .palettes import PREFIX, read_palette
 from .pipeline import CATALOG
 
 
@@ -54,7 +55,8 @@ def node_title(stack: str, item: dict[str, Any], temperature_unit: str = "C") ->
     elif kind == "source":
         suffix = option("source")
     elif kind == "colors":
-        suffix = option("palette")
+        suffix = (read_palette(p["palette"])["name"] if p["palette"].startswith(PREFIX)
+                  else option("palette"))
     elif kind == "filter":
         suffix = option("filter")
         if p["filter"] == "sharpen":

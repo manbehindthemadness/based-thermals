@@ -13,6 +13,7 @@ import numpy as np
 
 from ..custom_nodes.labels import DisplayLabel, draw_display_labels
 from ..enhancement_limits import MAX_PIXELS
+from ..palettes import PREFIX, custom_lut
 
 INTERPOLATIONS = {
     "nearest": cv2.INTER_NEAREST,
@@ -77,6 +78,8 @@ def colorize(gray: np.ndarray, palette: str) -> np.ndarray:
     Colorize.
     """
     gray = bytes_image(gray)
+    if palette.startswith(PREFIX):
+        return custom_lut(palette)[gray]
     if palette.startswith("camera_"):
         value = int(palette.split("_")[1])
         aliases = {

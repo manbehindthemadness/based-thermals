@@ -41,6 +41,15 @@ colorization as the software palette node. The updated packages require an
 application version containing this helper. Older embedded packages retain their
 old controls until their module folder is reopened and the pipeline saved again.
 
+The shared visualization palette menu also offers saved custom palettes from the
+Imaging panel's **Palette builder**. A `choice` control with key `palette` and
+options exactly matching `list(palette_names())` opts into this menu. Its current
+value may be a built-in label or a portable `custom:` gradient string; preserve
+that value when saving configurations and resolve it with `palette_lut(value)`.
+Membership checks against `palette_names()` accept validated custom strings, so
+existing embedded surface packages using that helper remain compatible. Iterating
+the names still yields only the stable built-in choices, without reading user files.
+
 For camera-free synthetic previews and CPU timings, run from the repository root:
 
 ```sh

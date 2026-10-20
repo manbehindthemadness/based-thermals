@@ -16,8 +16,10 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from ..palettes import is_palette_choice
 from .custom_choices import ColorPicker, ModelPicker
 from .custom_devices import DevicePicker
+from .palette_choices import palette_options
 
 
 class CustomFields(QWidget):
@@ -51,9 +53,15 @@ class CustomFields(QWidget):
                 widget.toggled.connect(lambda value, name=key: changed(name, value))
             elif kind == "choice":
                 widget = QComboBox()
-                widget.addItems(control["options"])
-                widget.setCurrentText(values[key])
-                widget.currentTextChanged.connect(lambda value, name=key: changed(name, value))
+                choices = tuple((value, value) for value in control["options"])
+                if is_palette_choice(control):
+                    choices = palette_options(choices, values[key])
+                for value, label in choices:
+                    widget.addItem(label, value)
+                widget.setCurrentIndex(widget.findData(values[key]))
+                widget.currentIndexChanged.connect(
+                    lambda _index, field=widget, name=key: changed(name, field.currentData())
+                )
             elif kind == "text":
                 widget = QLineEdit(values[key])
                 self.text_values[key] = values[key]
@@ -100,7 +108,12 @@ class CustomFields(QWidget):
             elif isinstance(widget, QCheckBox):
                 widget.setChecked(values[key])
             elif isinstance(widget, QComboBox):
-                widget.setCurrentText(values[key])
+                if widget.findData(values[key]) < 0:
+                    choices = palette_options((), values[key])
+                    for value, label in choices:
+                        if widget.findData(value) < 0:
+                            widget.addItem(label, value)
+                widget.setCurrentIndex(widget.findData(values[key]))
             elif isinstance(widget, QLineEdit):
                 if (not preserve_pending or not widget.isModified()
                         or values[key] != self.text_values[key]):

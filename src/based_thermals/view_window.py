@@ -19,6 +19,8 @@ from .camera_backends.duo.hardware_controls import HARDWARE_CONTROLS, camera_ope
 from .capture_window import run_window
 from .environment_preset_ui import EnvironmentPresetControls
 from .pipeline_ui.markup_focus import focus_markup
+from .pipeline_ui.palette_builder import PaletteBuilder
+from .pipeline_ui.palette_transfer import refresh_pipeline_palettes
 from .view_controls import (
     ControlRow,
     NoWheelCheckBox,
@@ -546,6 +548,10 @@ class ViewWindow(QWidget):
 
         self.spot_hardware = SpotHardwareControls(self._send)
         rows.addWidget(self.spot_hardware)
+        self.palette_builder = PaletteBuilder(
+            lambda old, new: refresh_pipeline_palettes(self.pipeline_editor, old, new),
+        )
+        rows.addWidget(self.palette_builder)
         scroll.setWidget(body)
         layout.addWidget(scroll, 1)
         from .error_status import ErrorStatus
@@ -647,6 +653,7 @@ class ViewWindow(QWidget):
         self.cancel_tone.setVisible(tone_busy)
         self.cancel_tone.setEnabled(tone_busy and not state.get("settings_locked", False))
         self.pipeline_editor.update_state(state, locked)
+        self.palette_builder.set_locked(locked)
         focus_markup(self, state.get("markup_focus"))
         self.environment_presets.update_state(state.get("environment_presets", {}), locked)
         from .hardware_ui import update_hardware_ui

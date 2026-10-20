@@ -6,6 +6,7 @@ import math
 import re
 from typing import Any
 
+from ..palettes import PREFIX, is_palette_choice, read_palette
 from .bundle import read_json_object
 from .colors import color_value
 from .devices import validate_device
@@ -94,9 +95,12 @@ def validate_controls(controls: Any, values: dict[str, Any]) -> list[dict[str, A
                 raise ValueError(f"Custom text/choice requires a string: {key}")
             if kind == "choice":
                 options = control["options"]
+                embedded = (value.startswith(PREFIX) and is_palette_choice(control))
+                if embedded:
+                    read_palette(value)
                 if (not isinstance(options, list) or not 1 <= len(options) <= 128
                         or any(not isinstance(option, str) for option in options)
-                        or len(set(options)) != len(options) or value not in options):
+                        or len(set(options)) != len(options) or value not in options and not embedded):
                     raise ValueError(f"Invalid custom choice options/value: {key}")
     return controls
 
