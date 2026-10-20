@@ -41,7 +41,7 @@ def test_screenshot_defaults_match_embedded_and_standalone_settings() -> None:
     """
     expected = {"execution": "Taichi CPU", "detail": 256, "yaw": 80, "tilt": 45,
                 "scene_rotation": 90, "offset_x": -14, "offset_y": 0, "zoom": 1,
-                "height": .7, "smoothing": 3, "palette": "Turbo",
+                "height": .7, "smoothing": 3, "palette": "turbo",
                 "normalization": "Source range", "resolution": "1280", "wireframe": False,
                 "antialiasing": "2x supersampling", "geometry_method": "NumPy"}
     assert json.loads(load_folder(FOLDER)["config"]) == expected

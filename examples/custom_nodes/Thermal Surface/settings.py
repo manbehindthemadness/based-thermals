@@ -6,7 +6,7 @@ import math
 from dataclasses import dataclass
 from typing import Any
 
-from based_thermals.custom_nodes.visualization import palette_names
+from based_thermals.custom_nodes.palettes import palette_key
 
 
 # The Taichi comparison embeds this baseline; portable snapshots cannot import sibling folders.
@@ -68,7 +68,7 @@ class Settings:
             int(detail), number(config, "yaw", -35, -180, 180),
             number(config, "tilt", 50, 15, 85), number(config, "height", 0.7, 0, 2),
             number(config, "smoothing", 0.8, 0, 3),
-            choice(config, "palette", "Inferno", palette_names()),
+            palette_key(config.get("palette", "inferno")),
             choice(config, "normalization", "Source range", ("Source range", "Auto contrast")),
             int(choice(config, "resolution", "640", ("384", "640", "960"))), wireframe,
             number(config, "scene_rotation", 0, -180, 180),

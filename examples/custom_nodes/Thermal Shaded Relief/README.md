@@ -9,9 +9,12 @@ ambient light 0.3 and relief mix 1. Change azimuth to illuminate slopes from the
 opposite direction; elevation controls grazing versus overhead light. Ambient
 light sets the minimum illumination. Mix 0 returns the unshaded palette image.
 
-Every pipeline palette is available, including White/Black hot and the legacy
-Grayscale alias. **(approx.)** camera-style entries match the software pipeline's
-approximations, not exact hardware LUTs. Source range maps display values 0–255;
+The app's `palette` control provides all software palettes and saved Palette builder
+gradients. The shared visualization settings helper resolves the app's cached LUT;
+the package contains no palette catalog or color table. Legacy labels such as
+Grayscale remain accepted; new defaults use stable identifiers. Camera-style
+palettes use software approximations, not exact hardware LUTs. Source range maps
+display values 0–255;
 Auto contrast uses the current image's 1st/99th percentiles.
 
 This is a lighting visualization of relative brightness, not physical surface

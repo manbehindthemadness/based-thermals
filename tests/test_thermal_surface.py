@@ -259,7 +259,8 @@ def test_standalone_callback_rejects_invalid_settings(renderer: Any, key: str, v
     callback = processor.packages[item["id"]].process
     config = json.loads(item["params"]["config"])
     config[key] = value
-    with pytest.raises((TypeError, ValueError), match="Thermal Surface:"):
+    message = "[Pp]alette" if key == "palette" else "Thermal Surface:"
+    with pytest.raises((TypeError, ValueError), match=message):
         callback(np.zeros((2, 2, 3), np.float32), config)
 
 

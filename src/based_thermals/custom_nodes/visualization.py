@@ -144,7 +144,7 @@ def display_settings(config: dict[str, Any]) -> tuple[np.ndarray, str, float]:
     """
     Validate the common palette, normalization and smoothing controls.
     """
-    name = selection(config, "palette", "Turbo", palette_names())
+    colors = app_palette_lut(config.get("palette", "turbo"))
     mode = selection(config, "normalization", "Source range", ("Source range", "Auto contrast"))
     smoothing = number(config, "smoothing", 1, 0, 5)
-    return palette_lut(name), mode, smoothing
+    return colors, mode, smoothing

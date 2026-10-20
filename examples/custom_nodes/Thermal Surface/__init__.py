@@ -15,7 +15,7 @@ OUTPUT_KIND = "visualization"
 CONFIG_JSON = {
     "defaults": {
         "detail": 40, "yaw": -35, "tilt": 50, "height": 0.7,
-        "smoothing": 0.8, "palette": "Inferno", "normalization": "Source range",
+        "smoothing": 0.8, "palette": "inferno", "normalization": "Source range",
         "resolution": "640", "wireframe": False,
         "scene_rotation": 0, "offset_x": 0, "offset_y": 0, "zoom": 1,
     },

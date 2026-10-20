@@ -10,9 +10,11 @@ contrast compositor: inverted strokes with a black/white halo that remains visib
 on middle gray. Disable bands for a continuous palette; disable lines for bands
 alone. Interval count is 2–64 and line width is 1–5 input-image pixels.
 
-All pipeline palettes are available, plus the original Grayscale alias.
-Camera-style entries marked **(approx.)** use the same software approximations
-as the pipeline palette node, not exact camera LUTs.
+The app's `palette` control provides all software palettes and saved Palette builder
+gradients. The shared visualization settings helper resolves the app's cached LUT;
+the package contains no palette catalog or color table. Camera-style palettes use
+software approximations, not exact camera LUTs. Legacy labels such as Grayscale
+remain accepted; new defaults use stable palette identifiers.
 
 Contours divide display brightness into equal intervals. They are **relative
 heat contours**, not calibrated Celsius/Fahrenheit isotherms. Source range uses

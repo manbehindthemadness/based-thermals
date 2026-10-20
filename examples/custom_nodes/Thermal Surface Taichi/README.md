@@ -423,12 +423,12 @@ existing viewer renderer is retained.
 
 ## Full palette catalog
 
-All software pipeline palettes are now available in both geometry paths and
-OpenCV/Taichi rasterizers, including White/Black hot and the legacy Grayscale
-alias. Camera-style entries marked **(approx.)** use the pipeline's software
-approximations, not exact hardware LUTs. They share the same 256×3 BGR ramp through
-`based_thermals.custom_nodes.visualization.palette_lut`; palette selection does
-not initialize a device. Existing defaults and saved palette values are unchanged.
+The app's `palette` control provides all software palettes and saved Palette
+builder gradients in both geometry paths and OpenCV/Taichi rasterizers. Camera-style
+entries use software approximations, not exact hardware LUTs. Rendering and
+validation use `based_thermals.custom_nodes.palettes` directly, with no packaged
+catalog or LUT. Palette selection does not initialize a device. Existing saved
+labels, including Grayscale, remain accepted; new defaults use stable identifiers.
 Reopen this folder and save the pipeline to update an older embedded package;
 opening a folder loads its defaults.
 

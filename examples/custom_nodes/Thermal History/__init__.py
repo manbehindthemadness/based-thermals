@@ -13,7 +13,7 @@ OUTPUT_KIND = "visualization"
 
 CONFIG_JSON = {
     "defaults": {
-        "palette": "Turbo",
+        "palette": "turbo",
         "normalization": "Source range",
         "smoothing": 1,
         "profile": "Mean rows",

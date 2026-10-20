@@ -8,7 +8,7 @@ import math
 from dataclasses import dataclass
 from typing import Any
 
-from based_thermals.custom_nodes.visualization import palette_names
+from based_thermals.custom_nodes.palettes import palette_key
 
 
 # noinspection DuplicatedCode
@@ -75,7 +75,7 @@ class Settings:
             int(detail), number(config, "yaw", 80, -180, 180),
             number(config, "tilt", 45, 15, 85), number(config, "height", 0.7, 0, 2),
             number(config, "smoothing", 3, 0, 3),
-            choice(config, "palette", "Turbo", palette_names()),
+            palette_key(config.get("palette", "turbo")),
             choice(config, "normalization", "Source range", ("Source range", "Auto contrast")),
             int(choice(config, "resolution", "1280", ("384", "640", "960", "1280", "1600",
                                                      "1920", "2304", "2560", "3840", "4096"))),

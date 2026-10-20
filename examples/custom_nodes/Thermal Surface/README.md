@@ -125,10 +125,11 @@ rebuild, export and locks.
 
 ## Full palette catalog
 
-The palette dropdown now includes every software pipeline palette, plus the
-legacy Grayscale alias. Camera-style entries marked **(approx.)** use the same
-software approximations as the palette node, not exact hardware LUTs. Existing
-Inferno/Turbo/Grayscale values and defaults remain compatible. Updated packages
-use `based_thermals.custom_nodes.visualization.palette_lut`; no GPU is initialized
-by palette selection. Reopen this folder and save the pipeline to replace an
-older embedded package; opening a folder loads its defaults.
+The app's `palette` control provides every software pipeline palette and saved
+Palette builder gradient. Rendering and validation use
+`based_thermals.custom_nodes.palettes` directly, with no packaged catalog or LUT.
+Camera-style palettes use software approximations, not exact hardware LUTs.
+Existing Inferno/Turbo/Grayscale values remain compatible; new defaults use stable
+palette identifiers. Palette selection does not initialize a GPU. Reopen this
+folder and save the pipeline to replace an older embedded package; opening a
+folder loads its defaults.

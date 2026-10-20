@@ -40,9 +40,12 @@ Range changes display brightness; clear history after such a change if you need
 a consistent comparison. Height and color represent relative brightness, never
 physical elevation or calibrated temperatures.
 
-All pipeline palettes are available, plus the legacy Grayscale alias. Camera-style
-entries marked **(approx.)** are the existing software approximations, not exact
-camera LUTs. Measurement graphics automatically hide only when this visualization
+The app's `palette` control provides all software palettes and saved Palette builder
+gradients. The shared visualization settings helper resolves the app's cached LUT;
+the package contains no palette catalog or color table. Legacy labels such as
+Grayscale remain accepted; new defaults use stable identifiers. Camera-style
+palettes use software approximations, not exact camera LUTs.
+Measurement graphics automatically hide only when this visualization
 is directly in pipeline A; measurement sampling, graphs and Markup variables
 remain active. Other tabs follow the viewer's existing visibility rules.
 

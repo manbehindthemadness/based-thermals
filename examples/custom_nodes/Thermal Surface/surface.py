@@ -7,7 +7,7 @@ from typing import Any
 import cv2
 import numpy as np
 
-from based_thermals.custom_nodes.visualization import palette_lut
+from based_thermals.custom_nodes.palettes import palette_lut
 
 from .geometry import Geometry
 from .settings import Settings
@@ -15,7 +15,7 @@ from .settings import Settings
 
 def palette(name: str) -> np.ndarray:
     """
-    Construct a BGR color ramp without loading assets or initializing a GPU runtime.
+    Read the app's cached BGR ramp without loading assets or initializing a device.
     """
     colors = palette_lut(name)
     return colors

@@ -11,7 +11,7 @@ from .relief import render
 
 CONFIG_JSON = {
     "defaults": {
-        "palette": "Turbo",
+        "palette": "turbo",
         "normalization": "Source range",
         "smoothing": 1,
         "azimuth": 315,

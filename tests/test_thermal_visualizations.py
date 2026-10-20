@@ -13,6 +13,7 @@ import pytest
 from support.frames import make_frame
 from support.pipeline import raw_pipeline
 
+from based_thermals.custom_nodes import visualization
 from based_thermals.custom_nodes.bundle import load_folder
 from based_thermals.custom_nodes.runtime import CustomProcessor
 from based_thermals.custom_nodes.visualization import palette_lut
@@ -30,6 +31,31 @@ NAMES = (
     "Thermal Surface",
     "Thermal Surface Taichi",
 )
+
+
+@pytest.mark.parametrize("name", NAMES)
+def test_examples_use_direct_app_palette_api(
+    name: str, processor: CustomProcessor, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    Render identical canonical and legacy colors without using compatibility palette helpers.
+    """
+    def forbidden(*_args: Any, **_kwargs: Any) -> None:
+        """
+        Catch regressions that route maintained examples through legacy palette catalogs.
+        """
+        raise AssertionError("Maintained examples must use the app palette API directly")
+
+    monkeypatch.setattr(visualization, "palette_names", forbidden)
+    monkeypatch.setattr(visualization, "palette_lut", forbidden)
+    canonical = configured(name, palette="turbo", detail=16, samples=16, history=8,
+                           resolution="384", execution="OpenCV", antialiasing="Off")
+    legacy = configured(name, palette="Turbo", detail=16, samples=16, history=8,
+                        resolution="384", execution="OpenCV", antialiasing="Off")
+    image = np.repeat(np.linspace(0, 255, 32, dtype=np.float32)[None, :, None], 3, axis=2)
+    image = np.repeat(image, 24, axis=0)
+    for frame in (image, 255 - image):
+        np.testing.assert_array_equal(processor.apply(frame, canonical), processor.apply(frame, legacy))
 
 
 @pytest.mark.parametrize("name", NAMES)

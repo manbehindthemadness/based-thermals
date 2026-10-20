@@ -11,7 +11,7 @@ from .contours import render
 
 CONFIG_JSON = {
     "defaults": {
-        "palette": "Turbo",
+        "palette": "turbo",
         "normalization": "Source range",
         "smoothing": 1,
         "levels": 12,

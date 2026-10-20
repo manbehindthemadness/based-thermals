@@ -8,7 +8,7 @@ from typing import Any, cast
 
 import numpy as np
 
-from based_thermals.custom_nodes.visualization import palette_lut
+from based_thermals.custom_nodes.palettes import palette_lut
 
 from .antialiasing import rasterize
 from .geometry import ByteArray, Geometry
@@ -20,7 +20,7 @@ from .settings import Settings
 # noinspection DuplicatedCode
 def palette(name: str) -> ByteArray:
     """
-    Construct a BGR color ramp without loading assets or initializing a GPU runtime.
+    Read the app's cached BGR ramp without loading assets or initializing a device.
     """
     colors = palette_lut(name)
     return colors

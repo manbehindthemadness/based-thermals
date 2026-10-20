@@ -17,7 +17,7 @@ CONFIG_JSON = {
         "execution": "Taichi CPU",
         "geometry_method": "NumPy",
         "detail": 256, "yaw": 80, "tilt": 45, "height": 0.7,
-        "smoothing": 3, "palette": "Turbo", "normalization": "Source range",
+        "smoothing": 3, "palette": "turbo", "normalization": "Source range",
         "resolution": "1280", "wireframe": False,
         "antialiasing": "2x supersampling",
         "scene_rotation": 90, "offset_x": -14, "offset_y": 0, "zoom": 1,
