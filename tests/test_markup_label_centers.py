@@ -2,7 +2,9 @@
 Keep upright label centers beside their arrows when rotating the camera, including older saved labels.
 """
 
+import json
 from copy import deepcopy
+from pathlib import Path
 from typing import Any
 from unittest.mock import Mock
 
@@ -19,6 +21,7 @@ from based_thermals.markup.labels import IDENTITY, MarkupLabel, node_labels
 from based_thermals.markup.model import annotation, read_annotations, serialize
 from based_thermals.markup.paint import draw_object, label_bounds, masks_for, project, text_layout
 from based_thermals.pipeline import node, validate_pipeline
+from based_thermals.pipeline_presets import predefined_presets
 
 
 def mapping(rotation: int) -> tuple[float, ...]:
@@ -158,3 +161,62 @@ def test_center_on_a_projective_horizon_does_not_crash_or_create_stray_text() ->
     singular = (0.,) * 9
     legacy = {key: value for key, value in item.items() if key != "text_offset"}
     assert center_offset((480, 640), legacy, singular) is None
+
+
+@pytest.mark.usefixtures("viewer")
+@pytest.mark.parametrize("initial", [0, 90, 180, 270])
+@pytest.mark.parametrize("rotation", [0, 90, 180, 270])
+def test_bundled_height_map_label_centers_do_not_depend_on_startup_rotation(
+    initial: int, rotation: int,
+) -> None:
+    """
+    Every startup and viewer rotation must keep the preset labels beside their arrow tails.
+    """
+    session = desktop.DesktopSession(desktop, [])
+    document = predefined_presets()["Thermal Height Map"]
+    markup = next(item for item in document["software"] if item["type"] == "markup")
+    original = read_annotations(markup["params"]["annotations"])
+    # In the saved 270-degree view the legacy labels sit just above the arrow tails.
+    # Rotate those measured centers independently to check the opposite portrait view.
+    reference = {}
+    tails = {"fc40a95980bd4fcf94cc547d52f36053": "b34bf6312f1a45149fa85375a719b1a1",
+             "3dc5ed0a673e44478bb45cabd9554cfe": "ee0dbbc71dcb4e448b57c7166b298c8a"}
+    objects = {item["id"]: item for item in original}
+    for item in original:
+        if item["kind"] == "text":
+            legacy = {key: value for key, value in item.items() if key != "text_offset"}
+            rectangle = bounds((1024, 768), legacy, mapping(270))
+            center = (rectangle[:2] + rectangle[2:]) / 2
+            reference[item["id"]] = rotate(center / (767, 1023), 90)
+    session.pipeline = deepcopy(document)
+    session.renderer.set_pipeline(session.pipeline)
+    session.renderer.rotation = initial
+    shape = (768, 1024) if initial % 180 == 0 else (1024, 768)
+    session.rendered = session.api.replace(session.renderer.render_detailed(make_frame()),
+                                           image=np.zeros((*shape, 3), np.uint8))
+    session.markup_frames = [{"node": markup["id"], "annotation": "",
+                              "matrix": list(mapping(initial))}]
+    session.anchor_legacy_markup_labels()
+    session.set_viewer_orientation({"rotation": rotation, "layout": "landscape"})
+    saved = session.markup_node(markup["id"])
+    assert saved is not None
+    for item in read_annotations(saved["params"]["annotations"]):
+        if item["kind"] == "text":
+            shape = (1024, 768) if rotation % 180 else (768, 1024)
+            dimensions = np.array((shape[1] - 1, shape[0] - 1))
+            rectangle = bounds(shape, item, mapping(rotation))
+            center = (rectangle[:2] + rectangle[2:]) / 2
+            expected = rotate(reference[item["id"]], rotation) * dimensions
+            size = rectangle[2:] - rectangle[:2]
+            # Landscape views keep the label visible when its center approaches an edge.
+            expected = np.clip(expected, size / 2, dimensions - size / 2)
+            np.testing.assert_allclose(center, expected, atol=.51)
+            tail = project([objects[tails[item["id"]]]["points"][0]],
+                           mapping(rotation))[0] * dimensions
+            # Both labels belong in the gap beside their tails, rather than over the raw inset.
+            assert np.linalg.norm(center - tail) < (17 if rotation % 180 else 30)
+    # The downloadable pipeline and the factory preset must use identical anchors.
+    exported = json.loads((Path(__file__).resolve().parents[1] /
+                           "presets/Thermal Height Map.pipeline.json").read_text())
+    exported_markup = next(item for item in exported["software"] if item["type"] == "markup")
+    assert read_annotations(exported_markup["params"]["annotations"]) == original

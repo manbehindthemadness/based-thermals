@@ -40,6 +40,13 @@ On 2026-10-19 its embedded source and palette dropdown were refreshed to include
 all software pipeline palettes, with camera-style approximations labeled explicitly.
 Its saved configuration, layout and other nodes were preserved.
 
+On 2026-10-20 its two Markup labels were given explicit source-local centers using
+the preset's original 270° portrait layout. Their positions no longer depend on
+whether the viewer starts at 0°, 90°, 180° or 270°. Each label stays beside its
+arrow tail in either portrait orientation. Arrow geometry, text, styles and camera
+settings are unchanged. To update an already saved copy, restart the app and select **Thermal Height Map** again, or import the refreshed export. Reloading
+the Custom module or performing another factory reset is unnecessary.
+
 Exports retain saved node identities, expansion and bypass states, hardware
 controls, every software branch, and model/backend settings. Bundled presets use
 collapsed nodes throughout; processing settings and bypass states match the exports.
