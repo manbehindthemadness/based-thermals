@@ -15,7 +15,8 @@ from .preference_io import save_json
 from .window_preferences import _path
 
 PREFIX = "custom:"
-MAX_FILE_BYTES = 2 * 1024 * 1024
+MAX_FILE_BYTES = 8 * 1024 * 1024
+MAX_STOPS = 256
 
 
 def validate_palette(value: Any) -> dict[str, Any]:
@@ -28,8 +29,8 @@ def validate_palette(value: Any) -> dict[str, Any]:
     if (not isinstance(name, str) or not name.strip() or len(name) > 100
             or any(ord(char) < 32 for char in name)):
         raise ValueError("Palette names must contain 1–100 printable characters")
-    if not isinstance(stops, list) or not 2 <= len(stops) <= 64:
-        raise ValueError("A palette requires 2–64 color stops")
+    if not isinstance(stops, list) or not 2 <= len(stops) <= MAX_STOPS:
+        raise ValueError(f"A palette requires 2–{MAX_STOPS} color stops")
     normalized = []
     previous = -1.0
     for stop in stops:
@@ -62,7 +63,7 @@ def _read_token(value: str) -> dict[str, Any]:
     """
     Parse bounded embedded definitions once, independently of the user's library.
     """
-    if len(value) > 16384 or not value.startswith(PREFIX):
+    if len(value) > 32768 or not value.startswith(PREFIX):
         raise ValueError("Invalid custom palette")
     result = validate_palette(json.loads(value[len(PREFIX):]))
     return result
@@ -97,7 +98,7 @@ def read_library(path: Path) -> dict[str, dict[str, Any]]:
     Validate an entire versioned import before changing any saved palettes.
     """
     if path.stat().st_size > MAX_FILE_BYTES:
-        raise ValueError("Palette files must be smaller than 2 MiB")
+        raise ValueError("Palette files must be smaller than 8 MiB")
     document = json.loads(path.read_text(encoding="utf-8"))
     if (not isinstance(document, dict) or set(document) != {"version", "palettes"}
             or type(document["version"]) is not int or document["version"] != 1

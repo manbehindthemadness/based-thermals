@@ -540,6 +540,10 @@ class ViewWindow(QWidget):
         self.reflected_calibration = ReflectedCalibrationControls(self._send)
         for tool in (self.distance_calibration, self.emissivity_calibration, self.reflected_calibration):
             calibrations_layout.addWidget(tool)
+        self.palette_builder = PaletteBuilder(
+            lambda old, new: refresh_pipeline_palettes(self.pipeline_editor, old, new),
+        )
+        rows.addWidget(self.palette_builder)
         rows.addStretch()
         self.reported_readings = QLabel()
         self.reported_readings.setWordWrap(True)
@@ -548,10 +552,6 @@ class ViewWindow(QWidget):
 
         self.spot_hardware = SpotHardwareControls(self._send)
         rows.addWidget(self.spot_hardware)
-        self.palette_builder = PaletteBuilder(
-            lambda old, new: refresh_pipeline_palettes(self.pipeline_editor, old, new),
-        )
-        rows.addWidget(self.palette_builder)
         scroll.setWidget(body)
         layout.addWidget(scroll, 1)
         from .error_status import ErrorStatus

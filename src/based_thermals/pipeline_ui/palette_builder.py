@@ -23,13 +23,16 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from ..palette_templates import builtin_template
 from ..palettes import (
+    MAX_STOPS,
     custom_lut,
     load_palettes,
     palette_token,
     save_palettes,
     validate_palette,
 )
+from ..pipeline_model.catalog import PALETTES
 from .hardware_section import HardwareSection
 
 
@@ -46,6 +49,7 @@ class PaletteBuilder(QWidget):
         self.changed = changed
         self.palettes = load_palettes()
         self.current: str | None = None
+        self.source_palette: str | None = None
         self.baseline = ""
         self.locked = False
         self.building = False
@@ -58,13 +62,14 @@ class PaletteBuilder(QWidget):
         body = QVBoxLayout(self.content)
         body.setContentsMargins(12, 0, 0, 0)
         explanation = QLabel(
-            "Build gradients from cool (0%) to hot (100%). Saved palettes appear in App colors "
+            "Start from a software palette or build a gradient from cool (0%) to hot (100%). "
+            "Save an editable copy for use in App colors "
             "and thermal visualization nodes. Camera hardware palettes are unchanged."
         )
         explanation.setWordWrap(True)
         body.addWidget(explanation)
         self.combo = QComboBox()
-        self.combo.setAccessibleName("Saved custom palettes")
+        self.combo.setAccessibleName("Software and custom palettes")
         self.combo.activated.connect(self.select)
         body.addWidget(self.combo)
         self.name = QLineEdit()
@@ -116,9 +121,13 @@ class PaletteBuilder(QWidget):
         with QSignalBlocker(self.combo):
             self.combo.clear()
             self.combo.addItem("New palette", None)
+            for key, label in PALETTES.items():
+                self.combo.addItem(f"Built-in · {label}", ["builtin", key])
+            self.combo.insertSeparator(self.combo.count())
             for name in sorted(self.palettes, key=str.casefold):
                 self.combo.addItem(name, name)
-            self.combo.setCurrentIndex(max(0, self.combo.findData(self.current)))
+            selected = ["builtin", self.source_palette] if self.source_palette else self.current
+            self.combo.setCurrentIndex(max(0, self.combo.findData(selected)))
 
     def draft(self) -> dict[str, Any]:
         """
@@ -139,6 +148,7 @@ class PaletteBuilder(QWidget):
         Select a saved palette or initialize a black-to-white draft.
         """
         self.current = name
+        self.source_palette = None
         value = self.palettes[name] if name is not None else {
             "name": "Untitled", "stops": [
                 {"position": 0, "color": "#000000"}, {"position": 1, "color": "#ffffff"},
@@ -241,9 +251,28 @@ class PaletteBuilder(QWidget):
         Switch saved palettes only after accounting for unsaved edits.
         """
         if not self.locked and self.discard_draft():
-            self.load_draft(self.combo.itemData(index))
+            choice = self.combo.itemData(index)
+            if isinstance(choice, list) and len(choice) == 2 and choice[0] == "builtin":
+                self.load_builtin(choice[1])
+            elif choice is None or isinstance(choice, str):
+                self.load_draft(choice)
+            else:
+                self.refresh_library()
         else:
             self.refresh_library()
+
+    def load_builtin(self, key: str) -> None:
+        """
+        Copy a built-in node palette into an editable draft without replacing the original.
+        """
+        if self.locked:
+            return
+        value = builtin_template(key)
+        self.current = None
+        self.source_palette = key
+        self.baseline = palette_token(value)
+        self.show_draft(value)
+        self.refresh_library()
 
     def new(self) -> None:
         """
@@ -260,8 +289,8 @@ class PaletteBuilder(QWidget):
             return
         try:
             value = self.draft()
-            if len(value["stops"]) >= 64:
-                raise ValueError("At most 64 color stops are supported")
+            if len(value["stops"]) >= MAX_STOPS:
+                raise ValueError(f"At most {MAX_STOPS} color stops are supported")
             left, right = max(zip(value["stops"], value["stops"][1:]),
                               key=lambda pair: pair[1]["position"] - pair[0]["position"])
             position = round((left["position"] + right["position"]) / 2, 3)

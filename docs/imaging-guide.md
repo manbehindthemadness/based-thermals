@@ -21,8 +21,9 @@ The matching **Calibrations** section below it contains distance, emissivity, an
 reflected-temperature calibration tools. It also starts collapsed on first use and
 remembers its last state independently of Environment.
 
-The **Palette builder** at the bottom of the panel also remembers its disclosure
-state and starts collapsed. Create a named gradient, use **Add stop** and
+The **Palette builder** directly below Calibrations also remembers its disclosure
+state and starts collapsed. Select an existing **Built-in** software palette to
+start from an exact editable copy, or create a new named gradient. Use **Add stop** and
 **Remove stop** to adjust its interior colors, and edit each stop's position or
 color. The fixed 0% and 100% endpoints represent cool and hot display intensities.
 The preview updates as you edit; **Save** creates or updates the palette. Editing

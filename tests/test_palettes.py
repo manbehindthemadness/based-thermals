@@ -15,6 +15,7 @@ from based_thermals.custom_nodes.bundle import load_folder
 from based_thermals.custom_nodes.configuration import validate_controls
 from based_thermals.custom_nodes.runtime import CustomProcessor
 from based_thermals.custom_nodes.visualization import palette_lut, palette_names
+from based_thermals.palette_templates import builtin_template
 from based_thermals.palettes import (
     custom_lut,
     load_palettes,
@@ -26,8 +27,21 @@ from based_thermals.palettes import (
     write_library,
 )
 from based_thermals.pipeline import default_pipeline, node, validate_pipeline
+from based_thermals.pipeline_model.catalog import PALETTES
 from based_thermals.pipeline_titles import node_title
 from based_thermals.processing.images import colorize
+
+
+@pytest.mark.parametrize("key", PALETTES)
+def test_builtin_templates_match_existing_node_palettes(key: str) -> None:
+    """
+    Preserve every built-in output color when creating an editable custom copy.
+    """
+    template = builtin_template(key)
+    assert template["name"] == f"{PALETTES[key]} copy"
+    assert 2 <= len(template["stops"]) <= 256
+    ramp = np.arange(256, dtype=np.uint8).reshape(256, 1)
+    np.testing.assert_array_equal(colorize(ramp, key), colorize(ramp, palette_token(template)))
 
 
 @pytest.fixture
@@ -234,6 +248,49 @@ builder.set_locked(False)
 QMessageBox.question = lambda *_: QMessageBox.StandardButton.No
 builder.new()
 assert builder.name.text() == 'Locked'
+window.close()
+'''
+    result = run_popup(script, tmp_path)
+    assert result.returncode == 0, result.stderr
+
+
+def test_builder_uses_builtin_node_palettes_as_templates(tmp_path: Path) -> None:
+    """
+    Select an existing software palette, edit its copy and use it in the node menu immediately.
+    """
+    script = r'''
+from PySide6.QtWidgets import QApplication
+from based_thermals.view_window import ViewWindow
+from based_thermals.palettes import read_palette, load_palettes
+from based_thermals.pipeline_model.catalog import PALETTES
+app = QApplication([])
+window = ViewWindow(lambda _: None)
+builder = window.palette_builder
+for key, label in PALETTES.items():
+    assert builder.combo.findData(['builtin', key]) > 0
+index = builder.combo.findData(['builtin', 'turbo'])
+builder.combo.setCurrentIndex(index)
+builder.select(index)
+assert builder.source_palette == 'turbo' and builder.current is None
+assert builder.name.text() == 'Turbo copy'
+assert builder.combo.currentData() == ['builtin', 'turbo']
+builder.name.setText('My Turbo')
+builder.save()
+assert builder.current == 'My Turbo' and builder.source_palette is None
+assert builder.status.text() == 'Saved'
+assert 'My Turbo' in load_palettes()
+editor = window.pipeline_editor
+editor.insert('software', 'colors', 1)
+item = editor.document['software'][1]
+combo = editor.widgets[item['id']][1]['palette'].input
+index = next(i for i in range(combo.count()) if combo.itemText(i) == 'Custom · My Turbo')
+combo.setCurrentIndex(index)
+editor.commit_pending_inputs()
+assert read_palette(item['params']['palette'])['name'] == 'My Turbo'
+assert combo.findData('turbo') >= 0
+builder.set_locked(True)
+builder.load_builtin('inferno')
+assert builder.current == 'My Turbo'
 window.close()
 '''
     result = run_popup(script, tmp_path)

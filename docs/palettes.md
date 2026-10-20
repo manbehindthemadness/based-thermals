@@ -5,13 +5,19 @@
 ## Custom palette files
 
 The Imaging panel's collapsible **Palette builder** creates named gradients with
-2–64 RGB color stops. Colors interpolate linearly in RGB into a cached 256-entry
+2–256 RGB color stops. Colors interpolate linearly in RGB into a cached 256-entry
 display lookup table. Positions run from 0 (cool) to 1 (hot), must increase strictly,
 and must include both endpoints. Names contain 1–100 printable characters and are
 unique without regard to case. The local library is `palettes.json` beside the
 application preferences; it is separate from bundled pipeline presets.
 
-Import accepts the following versioned JSON format (up to 128 palettes, 2 MiB).
+The builder lists the existing software palettes alongside custom palettes.
+Selecting a built-in creates an editable copy sampled directly from the node
+renderer, retaining enough stops to reproduce all 256 colors exactly. Save the
+copy under a name to make it available in node palette menus. Built-in definitions
+remain available; copying a camera-style palette uses its software approximation.
+
+Import accepts the following versioned JSON format (up to 128 palettes, 8 MiB).
 Export writes one current palette using the same format:
 
 ```json
